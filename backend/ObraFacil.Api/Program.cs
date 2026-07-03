@@ -44,6 +44,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddHttpClient<AnaliseIaService>();
 
 // ---------- CORS ----------
 var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
@@ -96,6 +97,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapAuthEndpoints();
 app.MapProjetoEndpoints();
+app.MapAnaliseEndpoints();
 
 app.Run();
 

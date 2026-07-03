@@ -38,6 +38,8 @@ FKs com `ON DELETE CASCADE`, índice único em `usuarios.email`, índices em `pr
 | GET | `/api/projetos` | JWT | Lista projetos do usuário |
 | GET | `/api/projetos/{id}` | JWT | Detalhe do projeto |
 | POST | `/api/projetos` | JWT | Cria projeto (plano Free: máx. 2) |
+| POST | `/api/projetos/{id}/analise` | JWT | Gera análise com IA (legalização + custos + planta) |
+| GET | `/api/projetos/{id}/analise` | JWT | Retorna análise salva |
 | GET | `/health` | — | Health check |
 
 Swagger disponível em `/swagger`.
@@ -72,6 +74,8 @@ npm run dev
    - `DATABASE_URL` = connection string do Neon
    - `JWT_SECRET` = uma string aleatória longa (ex.: `openssl rand -hex 32`)
    - `FRONTEND_URL` = URL do Vercel (adicione depois do passo 3)
+   - `ANTHROPIC_API_KEY` = sua chave da API da Anthropic (console.anthropic.com) — usada pela análise com IA
+   - `ANTHROPIC_MODEL` = opcional; padrão `claude-sonnet-4-6` (use `claude-haiku-4-5` para reduzir custo)
 4. Deploy → anote a URL (ex.: `https://obra-facil-api.onrender.com`)
 
 > O plano free do Render hiberna após inatividade; a primeira requisição pode levar ~30s.

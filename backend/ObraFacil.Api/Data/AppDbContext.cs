@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Projeto> Projetos => Set<Projeto>();
     public DbSet<Etapa> Etapas => Set<Etapa>();
+    public DbSet<AnaliseProjeto> Analises => Set<AnaliseProjeto>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,6 +32,8 @@ public class AppDbContext : DbContext
             e.Property(p => p.Nome).HasMaxLength(160).IsRequired();
             e.Property(p => p.Descricao).HasMaxLength(2000);
             e.Property(p => p.Endereco).HasMaxLength(300);
+            e.Property(p => p.Regiao).HasMaxLength(160);
+            e.Property(p => p.TipoArquitetura).HasMaxLength(80);
             e.Property(p => p.Orcamento).HasPrecision(14, 2);
             e.Property(p => p.Status).HasConversion<int>();
             e.HasIndex(p => p.UsuarioId);
@@ -38,6 +41,18 @@ public class AppDbContext : DbContext
             e.HasOne(p => p.Usuario)
                 .WithMany(u => u.Projetos)
                 .HasForeignKey(p => p.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AnaliseProjeto>(e =>
+        {
+            e.ToTable("analises_projeto");
+            e.HasKey(a => a.Id);
+            e.HasIndex(a => a.ProjetoId).IsUnique();
+
+            e.HasOne(a => a.Projeto)
+                .WithOne(p => p.Analise)
+                .HasForeignKey<AnaliseProjeto>(a => a.ProjetoId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

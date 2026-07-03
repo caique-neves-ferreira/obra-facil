@@ -3,6 +3,7 @@ import { auth } from './api';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NovoProjeto from './pages/NovoProjeto';
+import ProjetoDetalhe from './pages/ProjetoDetalhe';
 import Planos from './pages/Planos';
 
 function Topbar() {
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/planos" element={<Planos />} />
         <Route path="/projetos" element={<Protegida><Dashboard /></Protegida>} />
         <Route path="/projetos/novo" element={<Protegida><NovoProjeto /></Protegida>} />
+        <Route path="/projetos/:id" element={<Protegida><ProjetoDetalhe /></Protegida>} />
         <Route path="*" element={<Navigate to={auth.logado() ? '/projetos' : '/login'} replace />} />
       </Routes>
     </>

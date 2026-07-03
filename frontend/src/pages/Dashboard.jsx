@@ -61,7 +61,8 @@ export default function Dashboard() {
           {projetos.map((p) => {
             const concluidas = p.etapas.filter((e) => e.concluida).length;
             return (
-              <article className="card card-projeto" key={p.id}>
+              <Link to={`/projetos/${p.id}`} key={p.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <article className="card card-projeto" style={{ height: '100%' }}>
                 <span className={`badge ${p.status.toLowerCase()}`}>
                   {STATUS_LABEL[p.status] || p.status}
                 </span>
@@ -80,6 +81,7 @@ export default function Dashboard() {
                   </div>
                 )}
               </article>
+              </Link>
             );
           })}
         </div>

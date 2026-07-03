@@ -8,6 +8,9 @@ export default function NovoProjeto() {
     nome: '',
     descricao: '',
     endereco: '',
+    regiao: '',
+    terrenoRegistrado: 'nao',
+    tipoArquitetura: '',
     orcamento: '',
     areaM2: '',
     dataInicio: '',
@@ -27,10 +30,13 @@ export default function NovoProjeto() {
     setLimiteFree(false);
     setCarregando(true);
     try {
-      await api.criarProjeto({
+      const criado = await api.criarProjeto({
         nome: form.nome,
         descricao: form.descricao || null,
         endereco: form.endereco || null,
+        regiao: form.regiao || null,
+        terrenoRegistrado: form.terrenoRegistrado === 'sim',
+        tipoArquitetura: form.tipoArquitetura || null,
         orcamento: form.orcamento ? Number(form.orcamento) : null,
         areaM2: form.areaM2 ? Number(form.areaM2) : null,
         dataInicio: form.dataInicio || null,
@@ -39,7 +45,7 @@ export default function NovoProjeto() {
           ? form.etapas.split(',').map((e) => e.trim()).filter(Boolean)
           : null,
       });
-      navigate('/projetos');
+      navigate(`/projetos/${criado.id}`);
     } catch (e) {
       if (e.codigo === 'LIMITE_PLANO_FREE') setLimiteFree(true);
       else setErro(e.message);
@@ -94,6 +100,46 @@ export default function NovoProjeto() {
             onChange={(e) => atualizar('endereco', e.target.value)}
             placeholder="Rua, número, bairro, cidade"
           />
+        </div>
+
+        <div className="linha-dupla">
+          <div className="campo">
+            <label htmlFor="regiao">Região (cidade/UF) *</label>
+            <input
+              id="regiao"
+              value={form.regiao}
+              onChange={(e) => atualizar('regiao', e.target.value)}
+              placeholder="Ex.: Jaboatão dos Guararapes/PE"
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="registrado">Terreno registrado em cartório?</label>
+            <select
+              id="registrado"
+              value={form.terrenoRegistrado}
+              onChange={(e) => atualizar('terrenoRegistrado', e.target.value)}
+            >
+              <option value="nao">Não / não sei</option>
+              <option value="sim">Sim, já registrado</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="campo">
+          <label htmlFor="arquitetura">Tipo de arquitetura</label>
+          <select
+            id="arquitetura"
+            value={form.tipoArquitetura}
+            onChange={(e) => atualizar('tipoArquitetura', e.target.value)}
+          >
+            <option value="">Selecione…</option>
+            <option value="Casa térrea">Casa térrea</option>
+            <option value="Sobrado">Sobrado</option>
+            <option value="Kitnet / Studio">Kitnet / Studio</option>
+            <option value="Edícula / Anexo">Edícula / Anexo</option>
+            <option value="Comercial">Comercial</option>
+            <option value="Misto (residencial + comercial)">Misto (residencial + comercial)</option>
+          </select>
         </div>
 
         <div className="linha-dupla">
