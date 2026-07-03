@@ -56,15 +56,14 @@ public static class ProjetoEndpoints
 
             var usuario = await db.Usuarios.FirstAsync(u => u.Id == usuarioId);
 
-            if (usuario.Plano == Plano.Free)
+            if (usuario.Plano == Plano.Free && usuario.ProjetosCriadosTotal >= LimiteProjetosFree)
             {
-                var total = await db.Projetos.CountAsync(p => p.UsuarioId == usuarioId);
-                if (total >= LimiteProjetosFree)
-                    return Results.Json(new
-                    {
-                        erro = $"O plano Free permite até {LimiteProjetosFree} projetos. Faça upgrade para o plano Pro para projetos ilimitados.",
-                        codigo = "LIMITE_PLANO_FREE"
-                    }, statusCode: 403);
+                // Contador vitalício: excluir projetos não devolve cota no plano Free
+                return Results.Json(new
+                {
+                    erro = $"O plano Free permite criar até {LimiteProjetosFree} projetos (mesmo que alguns tenham sido excluídos). Faça upgrade para o plano Pro para projetos ilimitados.",
+                    codigo = "LIMITE_PLANO_FREE"
+                }, statusCode: 403);
             }
 
             var projeto = new Projeto
@@ -90,10 +89,46 @@ public static class ProjetoEndpoints
                     .ToList();
             }
 
+            usuario.ProjetosCriadosTotal++;
             db.Projetos.Add(projeto);
             await db.SaveChangesAsync();
 
             return Results.Created($"/api/projetos/{projeto.Id}", ProjetoResponse.From(projeto));
+        });
+
+        group.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>
+        {
+            var usuarioId = GetUsuarioId(user);
+            if (usuarioId is null) return Results.Unauthorized();
+
+            var projeto = await db.Projetos
+                .FirstOrDefaultAsync(p => p.Id == id && p.UsuarioId == usuarioId);
+
+            if (projeto is null)
+                return Results.NotFound(new { erro = "Projeto não encontrado." });
+
+            db.Projetos.Remove(projeto); // cascade apaga etapas e análise
+            await db.SaveChangesAsync();
+            return Results.NoContent();
+        });
+
+        group.MapPatch("/{id:guid}/etapas/{etapaId:guid}", async (
+            Guid id, Guid etapaId, AtualizarEtapaRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        {
+            var usuarioId = GetUsuarioId(user);
+            if (usuarioId is null) return Results.Unauthorized();
+
+            var etapa = await db.Etapas
+                .FirstOrDefaultAsync(e => e.Id == etapaId
+                    && e.ProjetoId == id
+                    && e.Projeto!.UsuarioId == usuarioId);
+
+            if (etapa is null)
+                return Results.NotFound(new { erro = "Etapa não encontrada." });
+
+            etapa.Concluida = req.Concluida;
+            await db.SaveChangesAsync();
+            return Results.Ok(new EtapaResponse(etapa.Id, etapa.Nome, etapa.Ordem, etapa.Concluida));
         });
     }
 

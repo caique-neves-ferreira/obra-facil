@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { auth } from './api';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NovoProjeto from './pages/NovoProjeto';
@@ -18,7 +19,7 @@ function Topbar() {
   return (
     <>
       <header className="topbar">
-        <Link to={logado ? '/projetos' : '/login'} className="logo">
+        <Link to="/" className="logo">
           Obra<span>Fácil</span>
         </Link>
         <nav>
@@ -43,12 +44,13 @@ export default function App() {
     <>
       <Topbar />
       <Routes>
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/planos" element={<Planos />} />
         <Route path="/projetos" element={<Protegida><Dashboard /></Protegida>} />
         <Route path="/projetos/novo" element={<Protegida><NovoProjeto /></Protegida>} />
         <Route path="/projetos/:id" element={<Protegida><ProjetoDetalhe /></Protegida>} />
-        <Route path="*" element={<Navigate to={auth.logado() ? '/projetos' : '/login'} replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

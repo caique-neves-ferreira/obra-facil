@@ -77,6 +77,13 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+
+    // Migração leve e idempotente para colunas novas (apenas Postgres/produção)
+    if (!string.IsNullOrEmpty(databaseUrl))
+    {
+        db.Database.ExecuteSqlRaw(
+            """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "ProjetosCriadosTotal" integer NOT NULL DEFAULT 0;""");
+    }
 }
 
 app.UseSwagger();
@@ -94,6 +101,15 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
+// Estatísticas públicas para a landing page
+app.MapGet("/api/stats", async (ObraFacil.Api.Data.AppDbContext db) =>
+{
+    var usuarios = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Usuarios);
+    var projetos = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Projetos);
+    var analises = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.Analises);
+    return Results.Ok(new { usuarios, projetos, analises });
+});
 
 app.MapAuthEndpoints();
 app.MapProjetoEndpoints();

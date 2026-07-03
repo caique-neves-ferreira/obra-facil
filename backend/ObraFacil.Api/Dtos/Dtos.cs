@@ -22,6 +22,8 @@ public record CriarProjetoRequest(
     List<string>? Etapas
 );
 
+public record AtualizarEtapaRequest(bool Concluida);
+
 public record EtapaResponse(Guid Id, string Nome, int Ordem, bool Concluida);
 
 public record ProjetoResponse(

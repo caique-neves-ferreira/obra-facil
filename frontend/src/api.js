@@ -18,7 +18,7 @@ async function request(path, options = {}) {
     throw new Error('Sessão expirada. Entre novamente.');
   }
 
-  const data = await res.json().catch(() => null);
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
     const msg = data?.erro || 'Algo deu errado. Tente novamente.';
     const err = new Error(msg);
@@ -40,6 +40,13 @@ export const api = {
   buscarAnalise: (projetoId) => request(`/api/projetos/${projetoId}/analise`),
   gerarAnalise: (projetoId) =>
     request(`/api/projetos/${projetoId}/analise`, { method: 'POST' }),
+  excluirProjeto: (id) =>
+    request(`/api/projetos/${id}`, { method: 'DELETE' }),
+  atualizarEtapa: (projetoId, etapaId, concluida) =>
+    request(`/api/projetos/${projetoId}/etapas/${etapaId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ concluida }),
+    }),
 };
 
 export const auth = {

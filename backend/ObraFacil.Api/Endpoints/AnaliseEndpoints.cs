@@ -45,6 +45,18 @@ public static class AnaliseEndpoints
             if (string.IsNullOrWhiteSpace(projeto.Regiao))
                 return Results.BadRequest(new { erro = "Informe a região do projeto para gerar a análise." });
 
+            var analiseExistente = await db.Analises.AnyAsync(x => x.ProjetoId == projetoId);
+            if (analiseExistente)
+            {
+                var plano = await db.Usuarios.Where(u => u.Id == usuarioId).Select(u => u.Plano).FirstAsync();
+                if (plano == Plano.Free)
+                    return Results.Json(new
+                    {
+                        erro = "No plano Free a análise é gerada uma única vez por projeto. Faça upgrade para o Pro para regenerar com novos parâmetros.",
+                        codigo = "REGENERACAO_PLANO_FREE"
+                    }, statusCode: 403);
+            }
+
             try
             {
                 var (legalizacao, custos, planta) = await ia.GerarAnaliseAsync(projeto);

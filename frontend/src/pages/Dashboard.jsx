@@ -24,6 +24,22 @@ export default function Dashboard() {
   const [projetos, setProjetos] = useState(null);
   const [erro, setErro] = useState('');
   const usuario = auth.usuario();
+  const planoFree = (usuario?.plano || 'Free') === 'Free';
+
+  async function excluir(ev, p) {
+    ev.preventDefault(); // não navega para o detalhe
+    ev.stopPropagation();
+    const aviso = planoFree
+      ? `Excluir "${p.nome}"?\n\nAtenção: no plano Free, excluir NÃO devolve a cota de criação (limite de 2 projetos criados no total).`
+      : `Excluir "${p.nome}"? Essa ação não pode ser desfeita.`;
+    if (!window.confirm(aviso)) return;
+    try {
+      await api.excluirProjeto(p.id);
+      setProjetos((lista) => lista.filter((x) => x.id !== p.id));
+    } catch (e) {
+      setErro(e.message);
+    }
+  }
 
   useEffect(() => {
     api.listarProjetos()
@@ -34,6 +50,9 @@ export default function Dashboard() {
   return (
     <main className="container">
       <span className="cota">Painel · {usuario?.nome || 'Usuário'}</span>
+      <span className={`badge ${planoFree ? 'pausado' : 'emandamento'}`} style={{ marginTop: 8 }}>
+        Plano {planoFree ? 'Free' : 'Pro'}
+      </span>
       <h1 className="titulo">Meus projetos</h1>
       <p className="subtitulo">
         Acompanhe o andamento de cada obra: etapas, orçamento e prazos.
@@ -80,6 +99,14 @@ export default function Dashboard() {
                     Etapas: {concluidas}/{p.etapas.length} concluídas
                   </div>
                 )}
+                <button
+                  onClick={(ev) => excluir(ev, p)}
+                  aria-label={`Excluir projeto ${p.nome}`}
+                  style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-soft)', fontSize: '1rem', padding: 4 }}
+                  title="Excluir projeto"
+                >
+                  ✕
+                </button>
               </article>
               </Link>
             );

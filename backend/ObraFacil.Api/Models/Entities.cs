@@ -21,6 +21,7 @@ public class Usuario
     public string Email { get; set; } = string.Empty;
     public string SenhaHash { get; set; } = string.Empty;
     public Plano Plano { get; set; } = Plano.Free;
+    public int ProjetosCriadosTotal { get; set; }   // contador vitalício — não diminui ao excluir (anti-burla do limite Free)
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
     public List<Projeto> Projetos { get; set; } = new();

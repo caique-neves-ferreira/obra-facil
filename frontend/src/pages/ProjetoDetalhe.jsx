@@ -4,7 +4,8 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import * as XLSX from 'xlsx';
-import { api } from '../api';
+import { jsPDF } from 'jspdf';
+import { api, auth } from '../api';
 
 const CORES = ['#f2600c', '#23508f', '#2e7d4f', '#c94e07', '#4a4d50', '#8a5a2b', '#1b6f8f', '#7a3fa0'];
 
@@ -98,6 +99,7 @@ export default function ProjetoDetalhe() {
   const [projeto, setProjeto] = useState(null);
   const [analise, setAnalise] = useState(null);
   const [gerando, setGerando] = useState(false);
+  const planoFree = (auth.usuario()?.plano || 'Free') === 'Free';
   const [erro, setErro] = useState('');
 
   useEffect(() => {
@@ -166,37 +168,59 @@ export default function ProjetoDetalhe() {
   }
 
   function baixarDocumento() {
-    const linhas = [
-      `# Roteiro de legalização — ${projeto?.nome}`,
-      '',
-      `Região: ${projeto?.regiao || '—'} | Terreno registrado: ${projeto?.terrenoRegistrado ? 'Sim' : 'Não'}`,
-      `Gerado em: ${new Date(analise.geradoEm).toLocaleDateString('pt-BR')}`,
-      '',
-      '> Estimativas geradas por IA com base em práticas comuns. Prazos, taxas e exigências variam',
-      '> por município — confirme na prefeitura e no cartório de imóveis da sua região.',
-      '',
-    ];
-    for (const l of legalizacao) {
-      linhas.push(`## ${l.ordem}. ${l.titulo} (${l.orgao})`);
-      linhas.push('');
-      linhas.push(l.descricao);
-      if (l.documentos?.length) {
-        linhas.push('');
-        linhas.push('Documentos necessários:');
-        for (const d of l.documentos) linhas.push(`- ${d}`);
-      }
-      linhas.push('');
-      linhas.push(`Prazo estimado: ${l.prazoEstimado} | Custo estimado: ${fmtBRL(l.custoEstimado)}`);
-      linhas.push('');
-    }
-    linhas.push(`**Custo total estimado de legalização: ${fmtBRL(totalLegalizacao)}**`);
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const margem = 18;
+    const larguraUtil = 210 - margem * 2;
+    let y = 22;
 
-    const blob = new Blob([linhas.join('\n')], { type: 'text/markdown;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `legalizacao-${(projeto?.nome || 'projeto').toLowerCase().replace(/\s+/g, '-')}.md`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const quebra = (altura = 6) => {
+      if (y + altura > 280) { doc.addPage(); y = 22; }
+    };
+    const texto = (str, tamanho = 10, estilo = 'normal', cor = [27, 29, 31]) => {
+      doc.setFont('helvetica', estilo);
+      doc.setFontSize(tamanho);
+      doc.setTextColor(...cor);
+      const linhas = doc.splitTextToSize(str, larguraUtil);
+      for (const linha of linhas) {
+        quebra();
+        doc.text(linha, margem, y);
+        y += tamanho * 0.5;
+      }
+    };
+
+    // Cabeçalho
+    doc.setFillColor(27, 29, 31);
+    doc.rect(0, 0, 210, 14, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text('OBRA FÁCIL — ROTEIRO DE LEGALIZAÇÃO', margem, 9);
+
+    texto(projeto?.nome || 'Projeto', 16, 'bold');
+    y += 2;
+    texto(`Região: ${projeto?.regiao || '—'}  |  Terreno registrado: ${projeto?.terrenoRegistrado ? 'Sim' : 'Não'}  |  Gerado em: ${new Date(analise.geradoEm).toLocaleDateString('pt-BR')}`, 9, 'normal', [74, 77, 80]);
+    y += 3;
+    texto('Estimativas geradas por IA com base em práticas comuns. Prazos, taxas e exigências variam por município — confirme na prefeitura e no cartório de imóveis da sua região.', 8.5, 'italic', [120, 120, 120]);
+    y += 4;
+
+    for (const l of legalizacao) {
+      quebra(14);
+      doc.setDrawColor(242, 96, 12);
+      doc.setLineWidth(0.8);
+      doc.line(margem, y - 1, margem + 8, y - 1);
+      texto(`${l.ordem}. ${l.titulo}  (${l.orgao})`, 12, 'bold');
+      texto(l.descricao, 9.5);
+      if (l.documentos?.length) {
+        texto(`Documentos: ${l.documentos.join(' · ')}`, 8.5, 'normal', [74, 77, 80]);
+      }
+      texto(`Prazo estimado: ${l.prazoEstimado}   |   Custo estimado: ${fmtBRL(l.custoEstimado)}`, 9, 'bold');
+      y += 4;
+    }
+
+    quebra(10);
+    texto(`CUSTO TOTAL ESTIMADO DE LEGALIZAÇÃO: ${fmtBRL(totalLegalizacao)}`, 11, 'bold', [242, 96, 12]);
+
+    doc.save(`legalizacao-${(projeto?.nome || 'projeto').toLowerCase().replace(/\s+/g, '-')}.pdf`);
   }
 
   if (!projeto && !erro) {
@@ -240,11 +264,52 @@ export default function ProjetoDetalhe() {
         <>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
             <button className="btn" onClick={baixarPlanilha}>⬇ Baixar planilha (.xlsx)</button>
-            <button className="btn secundario" onClick={baixarDocumento}>⬇ Documento de legalização</button>
-            <button className="btn secundario" onClick={gerar} disabled={gerando}>
-              {gerando ? 'Regenerando…' : '↻ Regenerar análise'}
-            </button>
+            <button className="btn secundario" onClick={baixarDocumento}>⬇ Documento de legalização (.pdf)</button>
+            {planoFree ? (
+              <Link to="/planos" className="btn secundario" title="Regeneração disponível no plano Pro">
+                ↻ Regenerar (Pro)
+              </Link>
+            ) : (
+              <button className="btn secundario" onClick={gerar} disabled={gerando}>
+                {gerando ? 'Regenerando…' : '↻ Regenerar análise'}
+              </button>
+            )}
           </div>
+
+          {/* ---------- Etapas da obra (checklist) ---------- */}
+          {projeto?.etapas?.length > 0 && (
+            <section style={{ marginTop: 36 }}>
+              <span className="cota">Andamento da obra</span>
+              <h2 className="titulo" style={{ fontSize: '1.6rem' }}>Etapas do planejamento</h2>
+              <div className="card" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {projeto.etapas.map((e) => (
+                  <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={e.concluida}
+                      onChange={async (ev) => {
+                        const concluida = ev.target.checked;
+                        setProjeto((pr) => ({
+                          ...pr,
+                          etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, concluida } : x),
+                        }));
+                        try { await api.atualizarEtapa(projeto.id, e.id, concluida); }
+                        catch { /* reverte em caso de falha */
+                          setProjeto((pr) => ({
+                            ...pr,
+                            etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, concluida: !concluida } : x),
+                          }));
+                        }
+                      }}
+                    />
+                    <span style={{ textDecoration: e.concluida ? 'line-through' : 'none', color: e.concluida ? 'var(--ink-soft)' : 'var(--ink)' }}>
+                      {e.nome}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ---------- Custos ---------- */}
           <section style={{ marginTop: 36 }}>
