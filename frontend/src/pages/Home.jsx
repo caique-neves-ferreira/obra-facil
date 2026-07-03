@@ -23,6 +23,48 @@ const AMBIENTES_DEMO = [
   { nome: 'Banheiro', l: 1.5, c: 3.5, x: 7, y: 4 },
 ];
 
+function ToastsSociais({ stats }) {
+  const [visivel, setVisivel] = useState(false);
+  const [saindo, setSaindo] = useState(false);
+  const [indice, setIndice] = useState(0);
+  const [dispensado, setDispensado] = useState(false);
+
+  const mensagens = [
+    stats?.projetos > 0 && `🏗️ ${stats.projetos.toLocaleString('pt-BR')} obra${stats.projetos > 1 ? 's' : ''} já cadastrada${stats.projetos > 1 ? 's' : ''} na plataforma`,
+    stats?.analises > 0 && `📊 ${stats.analises.toLocaleString('pt-BR')} análise${stats.analises > 1 ? 's' : ''} de legalização gerada${stats.analises > 1 ? 's' : ''} com IA`,
+    stats?.usuarios > 0 && `👷 ${stats.usuarios.toLocaleString('pt-BR')} pessoa${stats.usuarios > 1 ? 's' : ''} organizando a obra por aqui`,
+    '✅ Comece grátis: 2 projetos, sem cartão de crédito',
+    '📄 Roteiro de legalização em PDF em menos de 1 minuto',
+  ].filter(Boolean);
+
+  useEffect(() => {
+    if (dispensado || mensagens.length === 0) return;
+    const mostrar = setTimeout(() => setVisivel(true), 3500);
+    return () => clearTimeout(mostrar);
+  }, [dispensado, mensagens.length]);
+
+  useEffect(() => {
+    if (!visivel || dispensado) return;
+    const trocar = setInterval(() => {
+      setSaindo(true);
+      setTimeout(() => {
+        setIndice((i) => (i + 1) % mensagens.length);
+        setSaindo(false);
+      }, 300);
+    }, 7000);
+    return () => clearInterval(trocar);
+  }, [visivel, dispensado, mensagens.length]);
+
+  if (!visivel || dispensado || mensagens.length === 0) return null;
+
+  return (
+    <div className={`toast-social ${saindo ? 'saindo' : ''}`} role="status" aria-live="polite">
+      {mensagens[indice]}
+      <button className="fechar" onClick={() => setDispensado(true)} aria-label="Fechar aviso">✕</button>
+    </div>
+  );
+}
+
 export default function Home() {
   const [stats, setStats] = useState(null);
   const logado = auth.logado();
@@ -165,6 +207,21 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {/* ---------- Teaser Pro ---------- */}
+      <section style={{ background: 'var(--ink)', padding: '40px 20px' }}>
+        <div style={{ maxWidth: 1040, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+          <div>
+            <span className="cota" style={{ color: '#9a9c98' }}>Plano Pro</span>
+            <h2 style={{ fontFamily: 'var(--font-display)', textTransform: 'uppercase', color: '#fff', fontSize: '1.5rem', marginTop: 4 }}>
+              🔒 Projetos ilimitados, regeneração de análise e mais
+            </h2>
+          </div>
+          <Link to="/planos" className="btn">Conhecer o Pro</Link>
+        </div>
+      </section>
+
+      <ToastsSociais stats={stats} />
     </main>
   );
 }

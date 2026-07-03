@@ -319,3 +319,72 @@ h1.titulo {
   .card-projeto { transition: border-color 0.15s ease; }
   .card-projeto:hover { border-color: var(--ink); }
 }
+
+/* ---------- Toasts de prova social ---------- */
+.toast-social {
+  position: fixed;
+  bottom: 20px;
+  left: 16px;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--laranja);
+  padding: 12px 36px 12px 14px;
+  max-width: 320px;
+  font-size: 0.88rem;
+  box-shadow: 0 4px 16px rgba(27, 29, 31, 0.14);
+  animation: toast-entra 0.35s ease;
+}
+@keyframes toast-entra {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.toast-social.saindo { animation: toast-sai 0.3s ease forwards; }
+@keyframes toast-sai {
+  to { transform: translateY(16px); opacity: 0; }
+}
+.toast-social .fechar {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-social { animation: none; }
+}
+
+/* ---------- Recursos Pro com cadeado ---------- */
+.recurso-pro {
+  position: relative;
+  overflow: hidden;
+}
+.recurso-pro .preview-borrada {
+  filter: blur(3px);
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+.recurso-pro .cadeado {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(233, 234, 230, 0.55);
+}
+.recurso-pro .cadeado svg { width: 28px; height: 28px; }
+.recurso-pro .cadeado span {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: #fff;
+  padding: 3px 10px;
+}
