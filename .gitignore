@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+.DS_Store
