@@ -45,6 +45,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddHttpClient<AnaliseIaService>();
+builder.Services.AddHttpClient<MercadoPagoService>();
 
 // ---------- CORS ----------
 var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
@@ -83,6 +84,22 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.ExecuteSqlRaw(
             """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "ProjetosCriadosTotal" integer NOT NULL DEFAULT 0;""");
+
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS assinaturas (
+                "Id" uuid PRIMARY KEY,
+                "UsuarioId" uuid NOT NULL REFERENCES usuarios("Id") ON DELETE CASCADE,
+                "MercadoPagoId" varchar(80) NOT NULL,
+                "Status" integer NOT NULL DEFAULT 0,
+                "ValorMensal" numeric(10,2) NOT NULL DEFAULT 0,
+                "CriadaEm" timestamptz NOT NULL DEFAULT now(),
+                "AtivadaEm" timestamptz NULL,
+                "CanceladaEm" timestamptz NULL,
+                "AtualizadaEm" timestamptz NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_assinaturas_usuario ON assinaturas("UsuarioId");
+            CREATE INDEX IF NOT EXISTS ix_assinaturas_mp ON assinaturas("MercadoPagoId");
+            """);
     }
 }
 
@@ -114,6 +131,7 @@ app.MapGet("/api/stats", async (ObraFacil.Api.Data.AppDbContext db) =>
 app.MapAuthEndpoints();
 app.MapProjetoEndpoints();
 app.MapAnaliseEndpoints();
+app.MapAssinaturaEndpoints();
 
 app.Run();
 

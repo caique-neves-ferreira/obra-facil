@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Projeto> Projetos => Set<Projeto>();
     public DbSet<Etapa> Etapas => Set<Etapa>();
     public DbSet<AnaliseProjeto> Analises => Set<AnaliseProjeto>();
+    public DbSet<Assinatura> Assinaturas => Set<Assinatura>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -53,6 +54,22 @@ public class AppDbContext : DbContext
             e.HasOne(a => a.Projeto)
                 .WithOne(p => p.Analise)
                 .HasForeignKey<AnaliseProjeto>(a => a.ProjetoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Assinatura>(e =>
+        {
+            e.ToTable("assinaturas");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.MercadoPagoId).HasMaxLength(80).IsRequired();
+            e.HasIndex(a => a.MercadoPagoId);
+            e.HasIndex(a => a.UsuarioId);
+            e.Property(a => a.ValorMensal).HasPrecision(10, 2);
+            e.Property(a => a.Status).HasConversion<int>();
+
+            e.HasOne(a => a.Usuario)
+                .WithMany()
+                .HasForeignKey(a => a.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
