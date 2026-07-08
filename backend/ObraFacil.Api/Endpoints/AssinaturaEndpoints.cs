@@ -74,7 +74,20 @@ public static class AssinaturaEndpoints
                 .OrderByDescending(a => a.CriadaEm)
                 .FirstOrDefaultAsync();
 
-            var (mpId, initPoint) = await mp.CriarAssinaturaAsync(usuario.Id, usuario.Email);
+            string mpId, initPoint;
+            try
+            {
+                (mpId, initPoint) = await mp.CriarAssinaturaAsync(usuario.Id, usuario.Email);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Json(new
+                {
+                    erro = "Não foi possível iniciar o pagamento no Mercado Pago.",
+                    codigo = "MP_ERRO",
+                    detalhe = ex.Message // TODO: remover detalhe antes do lançamento público
+                }, statusCode: 502);
+            }
 
             if (pendente is not null)
             {
@@ -110,7 +123,19 @@ public static class AssinaturaEndpoints
             if (assinatura is null)
                 return Results.NotFound(new { erro = "Nenhuma assinatura ativa encontrada.", codigo = "SEM_ASSINATURA_ATIVA" });
 
-            await mp.CancelarAsync(assinatura.MercadoPagoId);
+            try
+            {
+                await mp.CancelarAsync(assinatura.MercadoPagoId);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Json(new
+                {
+                    erro = "Não foi possível cancelar no Mercado Pago. Tente novamente.",
+                    codigo = "MP_ERRO",
+                    detalhe = ex.Message
+                }, statusCode: 502);
+            }
 
             assinatura.Status = StatusAssinatura.Cancelada;
             assinatura.CanceladaEm = DateTime.UtcNow;
