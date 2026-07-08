@@ -30,16 +30,47 @@ public static class AssinaturaEndpoints
             .RequireAuthorization();
 
         // ---------- Minha assinatura ----------
-        group.MapGet("/minha", async (ClaimsPrincipal user, AppDbContext db) =>
+        group.MapGet("/minha", async (ClaimsPrincipal user, AppDbContext db, MercadoPagoService mp) =>
         {
             var usuarioId = GetUsuarioId(user);
             if (usuarioId is null) return Results.Unauthorized();
 
             var assinatura = await db.Assinaturas
-                .AsNoTracking()
                 .Where(a => a.UsuarioId == usuarioId)
                 .OrderByDescending(a => a.CriadaEm)
                 .FirstOrDefaultAsync();
+
+            // Fallback sem webhook: se ainda está Pendente, consulta o status direto no MP.
+            // Garante ativação mesmo se a notificação não chegar (ou chegar atrasada).
+            if (assinatura is not null && assinatura.Status == StatusAssinatura.Pendente
+                && !string.IsNullOrEmpty(assinatura.MercadoPagoId) && mp.Configurado)
+            {
+                try
+                {
+                    var statusMp = await mp.ConsultarStatusAsync(assinatura.MercadoPagoId);
+                    if (statusMp == "authorized")
+                    {
+                        assinatura.Status = StatusAssinatura.Ativa;
+                        assinatura.AtivadaEm ??= DateTime.UtcNow;
+                        assinatura.AtualizadaEm = DateTime.UtcNow;
+
+                        var usuario = await db.Usuarios.FirstAsync(u => u.Id == usuarioId);
+                        usuario.Plano = Plano.Pro;
+                        await db.SaveChangesAsync();
+                    }
+                    else if (statusMp == "cancelled")
+                    {
+                        assinatura.Status = StatusAssinatura.Cancelada;
+                        assinatura.CanceladaEm ??= DateTime.UtcNow;
+                        assinatura.AtualizadaEm = DateTime.UtcNow;
+                        await db.SaveChangesAsync();
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // MP indisponível: segue com o status local; próxima consulta tenta de novo
+                }
+            }
 
             return assinatura is null
                 ? Results.Ok(new { plano = "Free", assinatura = (AssinaturaResponse?)null })
