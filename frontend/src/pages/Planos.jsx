@@ -1,9 +1,75 @@
-import { Link } from 'react-router-dom';
-import { auth } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { api, auth } from '../api';
 
 export default function Planos() {
   const logado = auth.logado();
-  const plano = auth.usuario()?.plano;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const retornoMp = searchParams.get('retorno') === 'mp';
+
+  const [plano, setPlano] = useState(auth.usuario()?.plano || 'Free');
+  const [assinatura, setAssinatura] = useState(null);
+  const [processando, setProcessando] = useState(false);
+  const [aguardandoAtivacao, setAguardandoAtivacao] = useState(retornoMp);
+  const [erro, setErro] = useState('');
+  const tentativas = useRef(0);
+
+  async function carregarAssinatura() {
+    const data = await api.minhaAssinatura();
+    setPlano(data.plano);
+    setAssinatura(data.assinatura);
+    return data;
+  }
+
+  useEffect(() => {
+    if (!logado) return;
+    carregarAssinatura().catch(() => {});
+  }, [logado]);
+
+  // Retorno do checkout do Mercado Pago: aguarda o webhook ativar o plano
+  useEffect(() => {
+    if (!retornoMp || !logado) return;
+    const timer = setInterval(async () => {
+      tentativas.current += 1;
+      try {
+        const data = await carregarAssinatura();
+        if (data.plano === 'Pro' || tentativas.current >= 10) {
+          clearInterval(timer);
+          setAguardandoAtivacao(false);
+          setSearchParams({}, { replace: true });
+        }
+      } catch {
+        /* tenta de novo no próximo tick */
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [retornoMp, logado]);
+
+  async function assinar() {
+    setErro('');
+    setProcessando(true);
+    try {
+      const { urlCheckout } = await api.iniciarCheckout();
+      window.location.href = urlCheckout; // checkout seguro do Mercado Pago
+    } catch (e) {
+      setErro(e.message);
+      setProcessando(false);
+    }
+  }
+
+  async function cancelar() {
+    if (!window.confirm('Cancelar sua assinatura Pro? Você voltará ao plano Free.')) return;
+    setErro('');
+    setProcessando(true);
+    try {
+      await api.cancelarAssinatura();
+      await carregarAssinatura();
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setProcessando(false);
+    }
+  }
 
   return (
     <main className="container">
@@ -13,6 +79,29 @@ export default function Planos() {
         Comece grátis e faça upgrade quando precisar de mais projetos e recursos avançados.
       </p>
 
+      {aguardandoAtivacao && (
+        <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+          <strong>Confirmando seu pagamento…</strong>
+          <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
+            Assim que o Mercado Pago confirmar, seu plano Pro é ativado automaticamente
+            — pode levar alguns segundos.
+          </p>
+        </div>
+      )}
+      {!aguardandoAtivacao && plano === 'Pro' && assinatura?.status === 'Ativa' && (
+        <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+          <strong>Plano Pro ativo ✓</strong>
+          <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
+            Assinatura de R$ {Number(assinatura.valorMensal).toFixed(2).replace('.', ',')}/mês
+            ativa desde {new Date(assinatura.ativadaEm).toLocaleDateString('pt-BR')}.
+          </p>
+        </div>
+      )}
+      {erro && (
+        <div className="card" style={{ marginBottom: 20, padding: 16, borderColor: '#c00000' }}>
+          <strong>Ops:</strong> <span style={{ fontSize: '0.9rem' }}>{erro}</span>
+        </div>
+      )}
       <div className="grid-planos">
         <article className="card plano">
           <h3>Free</h3>
@@ -46,9 +135,28 @@ export default function Planos() {
             <li>Assistente IA para planejamento</li>
             <li>Suporte prioritário</li>
           </ul>
-          <button className="btn" disabled title="Em breve">
-            Em breve
-          </button>
+          {plano === 'Pro' ? (
+            <>
+              <span className="badge planejamento">Seu plano atual</span>
+              <button
+                className="btn secundario"
+                style={{ marginTop: 10 }}
+                onClick={cancelar}
+                disabled={processando}
+              >
+                {processando ? 'Processando…' : 'Cancelar assinatura'}
+              </button>
+            </>
+          ) : logado ? (
+            <button className="btn" onClick={assinar} disabled={processando || aguardandoAtivacao}>
+              {processando ? 'Redirecionando…' : 'Assinar Pro'}
+            </button>
+          ) : (
+            <Link to="/login" className="btn">Entrar para assinar</Link>
+          )}
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-soft)', marginTop: 10 }}>
+            PAGAMENTO SEGURO VIA MERCADO PAGO · CANCELE QUANDO QUISER
+          </p>
         </article>
       </div>
 
