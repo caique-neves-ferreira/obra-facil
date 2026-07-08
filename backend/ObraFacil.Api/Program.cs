@@ -85,6 +85,9 @@ using (var scope = app.Services.CreateScope())
         db.Database.ExecuteSqlRaw(
             """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "ProjetosCriadosTotal" integer NOT NULL DEFAULT 0;""");
 
+        db.Database.ExecuteSqlRaw(
+            """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "ReceberEmails" boolean NOT NULL DEFAULT true;""");
+
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS assinaturas (
                 "Id" uuid PRIMARY KEY,
@@ -132,6 +135,7 @@ app.MapAuthEndpoints();
 app.MapProjetoEndpoints();
 app.MapAnaliseEndpoints();
 app.MapAssinaturaEndpoints();
+app.MapContaEndpoints();
 
 app.Run();
 

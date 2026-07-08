@@ -148,6 +148,61 @@ public class MercadoPagoService
         }
     }
 
+    /// <summary>Fatura (cobrança recorrente) de uma assinatura.</summary>
+    public record FaturaMp(string Id, string Status, decimal Valor, DateTime? Data);
+
+    /// <summary>Lista as faturas (authorized_payments) de um preapproval, mais recentes primeiro.</summary>
+    public async Task<List<FaturaMp>> ListarFaturasAsync(string preapprovalId)
+    {
+        HttpResponseMessage resp;
+        string raw;
+        try
+        {
+            resp = await _http.GetAsync($"authorized_payments/search?preapproval_id={preapprovalId}");
+            raw = await resp.Content.ReadAsStringAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            throw new InvalidOperationException("Timeout ao buscar faturas no Mercado Pago (30s).");
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException($"Falha de rede ao buscar faturas no Mercado Pago: {ex.Message}");
+        }
+
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException(
+                $"Falha ao buscar faturas ({(int)resp.StatusCode}): {raw[..Math.Min(raw.Length, 300)]}");
+
+        var faturas = new List<FaturaMp>();
+        using var doc = JsonDocument.Parse(raw);
+        if (doc.RootElement.TryGetProperty("results", out var results) &&
+            results.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in results.EnumerateArray())
+            {
+                var id = item.TryGetProperty("id", out var idProp)
+                    ? (idProp.ValueKind == JsonValueKind.String ? idProp.GetString() ?? "" : idProp.GetRawText())
+                    : "";
+                var status = item.TryGetProperty("status", out var st) ? st.GetString() ?? "" : "";
+                decimal valor = 0;
+                if (item.TryGetProperty("transaction_amount", out var ta) && ta.ValueKind == JsonValueKind.Number)
+                    valor = ta.GetDecimal();
+                DateTime? data = null;
+                if (item.TryGetProperty("debit_date", out var dd) && dd.ValueKind == JsonValueKind.String &&
+                    DateTime.TryParse(dd.GetString(), out var d1))
+                    data = d1;
+                else if (item.TryGetProperty("date_created", out var dc) && dc.ValueKind == JsonValueKind.String &&
+                    DateTime.TryParse(dc.GetString(), out var d2))
+                    data = d2;
+
+                faturas.Add(new FaturaMp(id, status, valor, data));
+            }
+        }
+
+        return faturas.OrderByDescending(f => f.Data ?? DateTime.MinValue).ToList();
+    }
+
     /// <summary>
     /// Valida a assinatura HMAC do webhook (header x-signature: "ts=...,v1=...").
     /// Manifest oficial MP: "id:{dataId};request-id:{xRequestId};ts:{ts};"

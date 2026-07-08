@@ -97,6 +97,40 @@ public static class AssinaturaEndpoints
             return Results.Ok(new CheckoutResponse(initPoint, mpId));
         });
 
+        // ---------- Faturas da assinatura ----------
+        group.MapGet("/faturas", async (ClaimsPrincipal user, AppDbContext db, MercadoPagoService mp) =>
+        {
+            var usuarioId = GetUsuarioId(user);
+            if (usuarioId is null) return Results.Unauthorized();
+
+            var assinatura = await db.Assinaturas
+                .AsNoTracking()
+                .Where(a => a.UsuarioId == usuarioId && a.Status != StatusAssinatura.Pendente)
+                .OrderByDescending(a => a.CriadaEm)
+                .FirstOrDefaultAsync();
+
+            if (assinatura is null)
+                return Results.Ok(new { faturas = new List<Dtos.FaturaResponse>() });
+
+            try
+            {
+                var faturas = await mp.ListarFaturasAsync(assinatura.MercadoPagoId);
+                return Results.Ok(new
+                {
+                    faturas = faturas.Select(f => new Dtos.FaturaResponse(f.Id, f.Status, f.Valor, f.Data)).ToList()
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.Json(new
+                {
+                    erro = "Não foi possível buscar as faturas no Mercado Pago.",
+                    codigo = "MP_ERRO",
+                    detalhe = ex.Message
+                }, statusCode: 502);
+            }
+        });
+
         // ---------- Cancelar assinatura ----------
         group.MapPost("/cancelar", async (ClaimsPrincipal user, AppDbContext db, MercadoPagoService mp) =>
         {

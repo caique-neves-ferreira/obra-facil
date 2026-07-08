@@ -52,6 +52,12 @@ export const api = {
     request('/api/assinaturas/checkout', { method: 'POST' }),
   cancelarAssinatura: () =>
     request('/api/assinaturas/cancelar', { method: 'POST' }),
+  listarFaturas: () => request('/api/assinaturas/faturas'),
+  minhaConta: () => request('/api/conta'),
+  atualizarConta: (dados) =>
+    request('/api/conta', { method: 'PATCH', body: JSON.stringify(dados) }),
+  alterarSenha: (senhaAtual, novaSenha) =>
+    request('/api/conta/senha', { method: 'POST', body: JSON.stringify({ senhaAtual, novaSenha }) }),
 };
 
 export const auth = {

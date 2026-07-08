@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { auth } from './api';
 import Home from './pages/Home';
@@ -6,15 +7,30 @@ import Dashboard from './pages/Dashboard';
 import NovoProjeto from './pages/NovoProjeto';
 import ProjetoDetalhe from './pages/ProjetoDetalhe';
 import Planos from './pages/Planos';
+import Conta from './pages/Conta';
 
 function Topbar() {
   const navigate = useNavigate();
   const logado = auth.logado();
+  const usuario = auth.usuario();
+  const [menuAberto, setMenuAberto] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function fecharFora(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuAberto(false);
+    }
+    document.addEventListener('mousedown', fecharFora);
+    return () => document.removeEventListener('mousedown', fecharFora);
+  }, []);
 
   function sair() {
     auth.sair();
+    setMenuAberto(false);
     navigate('/login');
   }
+
+  const inicial = (usuario?.nome || '?').trim().charAt(0).toUpperCase();
 
   return (
     <>
@@ -26,7 +42,27 @@ function Topbar() {
           {logado && <Link to="/projetos">Projetos</Link>}
           <Link to="/planos">Planos</Link>
           {logado && (
-            <button className="sair" onClick={sair}>Sair</button>
+            <div className="avatar-menu" ref={menuRef}>
+              <button
+                className="avatar"
+                onClick={() => setMenuAberto((v) => !v)}
+                aria-label="Menu da conta"
+                aria-expanded={menuAberto}
+              >
+                {inicial}
+              </button>
+              {menuAberto && (
+                <div className="avatar-dropdown">
+                  <div className="avatar-info">
+                    <strong>{usuario?.nome}</strong>
+                    <small>{usuario?.email}</small>
+                  </div>
+                  <Link to="/conta" onClick={() => setMenuAberto(false)}>Minha conta</Link>
+                  <Link to="/planos" onClick={() => setMenuAberto(false)}>Planos</Link>
+                  <button onClick={sair}>Sair</button>
+                </div>
+              )}
+            </div>
           )}
         </nav>
       </header>
@@ -47,6 +83,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/planos" element={<Planos />} />
+        <Route path="/conta" element={<Protegida><Conta /></Protegida>} />
         <Route path="/projetos" element={<Protegida><Dashboard /></Protegida>} />
         <Route path="/projetos/novo" element={<Protegida><NovoProjeto /></Protegida>} />
         <Route path="/projetos/:id" element={<Protegida><ProjetoDetalhe /></Protegida>} />

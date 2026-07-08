@@ -388,3 +388,83 @@ h1.titulo {
   color: #fff;
   padding: 3px 10px;
 }
+
+/* ---------- Menu do avatar (Topbar) ---------- */
+.avatar-menu { position: relative; display: inline-block; }
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 210px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+.avatar-dropdown .avatar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+.avatar-dropdown .avatar-info small {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-dropdown a,
+.avatar-dropdown button {
+  text-align: left;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+  text-decoration: none;
+}
+.avatar-dropdown a:hover,
+.avatar-dropdown button:hover { background: rgba(0, 0, 0, 0.06); }
+
+/* ---------- Página Minha Conta ---------- */
+.grid-conta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+.tabela-faturas {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.tabela-faturas th, .tabela-faturas td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+.tabela-faturas th {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
