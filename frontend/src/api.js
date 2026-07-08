@@ -47,6 +47,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ concluida }),
     }),
+  minhaAssinatura: () => request('/api/assinaturas/minha'),
+  iniciarCheckout: () =>
+    request('/api/assinaturas/checkout', { method: 'POST' }),
+  cancelarAssinatura: () =>
+    request('/api/assinaturas/cancelar', { method: 'POST' }),
 };
 
 export const auth = {
