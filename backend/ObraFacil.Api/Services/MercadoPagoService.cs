@@ -62,10 +62,25 @@ public class MercadoPagoService
             }
         };
 
-        var resp = await _http.PostAsync("preapproval",
-            new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
+        HttpResponseMessage resp;
+        string raw;
+        try
+        {
+            resp = await _http.PostAsync("preapproval",
+                new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
+            raw = await resp.Content.ReadAsStringAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            throw new InvalidOperationException(
+                "Timeout ao comunicar com o Mercado Pago (30s). Tente novamente.");
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException(
+                $"Falha de rede ao comunicar com o Mercado Pago: {ex.Message}");
+        }
 
-        var raw = await resp.Content.ReadAsStringAsync();
         if (!resp.IsSuccessStatusCode)
             throw new InvalidOperationException(
                 $"Falha ao criar assinatura no Mercado Pago ({(int)resp.StatusCode}): {raw[..Math.Min(raw.Length, 300)]}");
@@ -79,8 +94,24 @@ public class MercadoPagoService
     /// <summary>Consulta o status atual do preapproval: authorized | paused | cancelled | pending.</summary>
     public async Task<string> ConsultarStatusAsync(string preapprovalId)
     {
-        var resp = await _http.GetAsync($"preapproval/{preapprovalId}");
-        var raw = await resp.Content.ReadAsStringAsync();
+        HttpResponseMessage resp;
+        string raw;
+        try
+        {
+            resp = await _http.GetAsync($"preapproval/{preapprovalId}");
+            raw = await resp.Content.ReadAsStringAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            throw new InvalidOperationException(
+                "Timeout ao consultar assinatura no Mercado Pago (30s).");
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException(
+                $"Falha de rede ao consultar assinatura no Mercado Pago: {ex.Message}");
+        }
+
         if (!resp.IsSuccessStatusCode)
             throw new InvalidOperationException(
                 $"Falha ao consultar assinatura ({(int)resp.StatusCode}): {raw[..Math.Min(raw.Length, 300)]}");
@@ -93,7 +124,22 @@ public class MercadoPagoService
     public async Task CancelarAsync(string preapprovalId)
     {
         var body = new StringContent("""{"status":"cancelled"}""", Encoding.UTF8, "application/json");
-        var resp = await _http.PutAsync($"preapproval/{preapprovalId}", body);
+        HttpResponseMessage resp;
+        try
+        {
+            resp = await _http.PutAsync($"preapproval/{preapprovalId}", body);
+        }
+        catch (TaskCanceledException)
+        {
+            throw new InvalidOperationException(
+                "Timeout ao cancelar assinatura no Mercado Pago (30s). Tente novamente.");
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException(
+                $"Falha de rede ao cancelar assinatura no Mercado Pago: {ex.Message}");
+        }
+
         if (!resp.IsSuccessStatusCode)
         {
             var raw = await resp.Content.ReadAsStringAsync();
@@ -122,7 +168,7 @@ public class MercadoPagoService
         }
         if (ts is null || v1 is null) return false;
 
-        var manifest = $"id:{dataId};request-id:{xRequestId};ts:{ts};";
+        var manifest = $"id:{dataId!.ToLowerInvariant()};request-id:{xRequestId};ts:{ts};";
         var hash = HMACSHA256.HashData(
             Encoding.UTF8.GetBytes(_webhookSecret),
             Encoding.UTF8.GetBytes(manifest));
