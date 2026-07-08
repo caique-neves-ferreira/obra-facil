@@ -10,7 +10,7 @@ public record UsuarioResponse(Guid Id, string Nome, string Email, string Plano);
 
 public record ContaResponse(Guid Id, string Nome, string Email, string Plano, bool ReceberEmails, DateTime CriadoEm);
 public record AtualizarContaRequest(string? Nome, string? Email, bool? ReceberEmails);
-public record AlterarSenhaRequest(string SenhaAtual, string NovaSenha);
+public record AlterarSenhaRequest(string Codigo, string NovaSenha);
 public record FaturaResponse(string Id, string Status, decimal Valor, DateTime? Data);
 
 public record CriarProjetoRequest(

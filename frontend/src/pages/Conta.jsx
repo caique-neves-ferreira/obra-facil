@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, auth } from '../api';
+
+const ABAS = [
+  { id: 'dados', rotulo: 'Dados da conta' },
+  { id: 'senha', rotulo: 'Alterar senha' },
+  { id: 'assinatura', rotulo: 'Assinatura' },
+];
 
 const STATUS_FATURA = {
   scheduled: 'Agendada',
@@ -10,6 +16,11 @@ const STATUS_FATURA = {
 };
 
 export default function Conta() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const aba = ABAS.some((a) => a.id === searchParams.get('aba'))
+    ? searchParams.get('aba')
+    : 'dados';
+
   const [conta, setConta] = useState(null);
   const [assinatura, setAssinatura] = useState(null);
   const [faturas, setFaturas] = useState([]);
@@ -18,7 +29,10 @@ export default function Conta() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [receberEmails, setReceberEmails] = useState(true);
-  const [senhaAtual, setSenhaAtual] = useState('');
+
+  // Fluxo de senha em 2 passos: solicitar código -> confirmar
+  const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [codigo, setCodigo] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
 
   const [msg, setMsg] = useState(null); // { tipo: 'ok'|'erro', texto }
@@ -35,6 +49,7 @@ export default function Conta() {
 
         const a = await api.minhaAssinatura();
         setAssinatura(a.assinatura);
+        auth.sincronizarPlano(a.plano);
         if (a.plano === 'Pro') {
           const f = await api.listarFaturas().catch(() => ({ faturas: [] }));
           setFaturas(f.faturas || []);
@@ -69,13 +84,27 @@ export default function Conta() {
     }
   }
 
+  async function enviarCodigo() {
+    setSalvando(true);
+    try {
+      const resp = await api.solicitarCodigoSenha();
+      setCodigoEnviado(true);
+      avisar('ok', resp.mensagem);
+    } catch (err) {
+      avisar('erro', err.message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   async function trocarSenha(e) {
     e.preventDefault();
     setSalvando(true);
     try {
-      await api.alterarSenha(senhaAtual, novaSenha);
-      setSenhaAtual('');
+      await api.alterarSenha(codigo, novaSenha);
+      setCodigo('');
       setNovaSenha('');
+      setCodigoEnviado(false);
       avisar('ok', 'Senha alterada com sucesso.');
     } catch (err) {
       avisar('erro', err.message);
@@ -123,9 +152,20 @@ export default function Conta() {
         </div>
       )}
 
-      <div className="grid-conta">
-        {/* ---------- Dados da conta ---------- */}
-        <section className="card" style={{ padding: 20 }}>
+      <div className="abas-conta">
+        {ABAS.map((a) => (
+          <button
+            key={a.id}
+            className={aba === a.id ? 'aba ativa' : 'aba'}
+            onClick={() => setSearchParams({ aba: a.id })}
+          >
+            {a.rotulo}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'dados' && (
+        <section className="card" style={{ padding: 20, maxWidth: 520 }}>
           <h3 style={{ marginBottom: 12 }}>Dados da conta</h3>
           <form onSubmit={salvarDados}>
             <label className="campo">
@@ -150,28 +190,53 @@ export default function Conta() {
             </button>
           </form>
         </section>
+      )}
 
-        {/* ---------- Segurança ---------- */}
-        <section className="card" style={{ padding: 20 }}>
+      {aba === 'senha' && (
+        <section className="card" style={{ padding: 20, maxWidth: 520 }}>
           <h3 style={{ marginBottom: 12 }}>Alterar senha</h3>
-          <form onSubmit={trocarSenha}>
-            <label className="campo">
-              Senha atual
-              <input type="password" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} required />
-            </label>
-            <label className="campo">
-              Nova senha
-              <input type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} required minLength={6} />
-            </label>
-            <button className="btn secundario" disabled={salvando}>
-              {salvando ? 'Salvando…' : 'Alterar senha'}
-            </button>
-          </form>
+          {!codigoEnviado ? (
+            <>
+              <p style={{ fontSize: '0.9rem', marginBottom: 14 }}>
+                Para sua segurança, enviaremos um código de 6 dígitos para
+                {' '}<strong>{conta?.email}</strong> antes de alterar a senha.
+              </p>
+              <button className="btn" onClick={enviarCodigo} disabled={salvando}>
+                {salvando ? 'Enviando…' : 'Enviar código para meu e-mail'}
+              </button>
+            </>
+          ) : (
+            <form onSubmit={trocarSenha}>
+              <label className="campo">
+                Código recebido por e-mail
+                <input
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ''))}
+                  required
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                />
+              </label>
+              <label className="campo">
+                Nova senha
+                <input type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} required minLength={6} />
+              </label>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button className="btn" disabled={salvando}>
+                  {salvando ? 'Salvando…' : 'Confirmar nova senha'}
+                </button>
+                <button type="button" className="btn secundario" onClick={enviarCodigo} disabled={salvando}>
+                  Reenviar código
+                </button>
+              </div>
+            </form>
+          )}
         </section>
-      </div>
+      )}
 
-      {/* ---------- Assinatura ---------- */}
-      <section className="card" style={{ padding: 20, marginTop: 20 }}>
+      {aba === 'assinatura' && (
+      <section className="card" style={{ padding: 20 }}>
         <h3 style={{ marginBottom: 12 }}>Assinatura</h3>
         <p style={{ fontSize: '0.95rem' }}>
           Plano atual: <strong>{conta?.plano}</strong>
@@ -224,11 +289,12 @@ export default function Conta() {
               {salvando ? 'Processando…' : 'Cancelar assinatura'}
             </button>
             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-soft)', marginTop: 8 }}>
-              AO CANCELAR, VOCÊ VOLTA AO PLANO FREE IMEDIATAMENTE. SEM MULTA, SEM FIDELIDADE.
+              AO CANCELAR, VOCÊ MANTÉM O PRO ATÉ O FIM DO PERÍODO JÁ PAGO. SEM MULTA, SEM FIDELIDADE.
             </p>
           </>
         )}
       </section>
+      )}
     </main>
   );
 }

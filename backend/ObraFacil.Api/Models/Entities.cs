@@ -22,6 +22,10 @@ public class Usuario
     public string SenhaHash { get; set; } = string.Empty;
     public Plano Plano { get; set; } = Plano.Free;
     public bool ReceberEmails { get; set; } = true;   // preferência de comunicação por e-mail
+
+    // Código de verificação para alteração de senha (hash + validade)
+    public string? CodigoSenhaHash { get; set; }
+    public DateTime? CodigoSenhaExpiraEm { get; set; }
     public int ProjetosCriadosTotal { get; set; }   // contador vitalício — não diminui ao excluir (anti-burla do limite Free)
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

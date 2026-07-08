@@ -133,6 +133,7 @@ export default function Planos() {
     const data = await api.minhaAssinatura();
     setPlano(data.plano);
     setAssinatura(data.assinatura);
+    auth.sincronizarPlano(data.plano);
     return data;
   }
 

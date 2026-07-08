@@ -62,7 +62,40 @@ public static class ContaEndpoints
             return Results.Ok(new ContaResponse(u.Id, u.Nome, u.Email, u.Plano.ToString(), u.ReceberEmails, u.CriadoEm));
         });
 
-        // ---------- Alterar senha ----------
+        // ---------- Alterar senha: passo 1 — solicitar código por e-mail ----------
+        group.MapPost("/senha/codigo", async (ClaimsPrincipal user, AppDbContext db, EmailService email) =>
+        {
+            var usuarioId = GetUsuarioId(user);
+            if (usuarioId is null) return Results.Unauthorized();
+
+            var u = await db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId);
+            if (u is null) return Results.Unauthorized();
+
+            var codigo = Random.Shared.Next(100000, 999999).ToString();
+            u.CodigoSenhaHash = PasswordHasher.Hash(codigo);
+            u.CodigoSenhaExpiraEm = DateTime.UtcNow.AddMinutes(10);
+            await db.SaveChangesAsync();
+
+            await email.EnviarAsync(
+                u.Email,
+                "Obra Fácil — Código para alteração de senha",
+                $"Olá, {u.Nome.Split(' ')[0]}!\n\n" +
+                $"Seu código para alterar a senha é: {codigo}\n\n" +
+                "Ele vale por 10 minutos. Se você não pediu essa alteração, ignore este e-mail.");
+
+            var arroba = u.Email.IndexOf('@');
+            var mascarado = arroba > 1
+                ? $"{u.Email[0]}***{u.Email[(arroba - 1)..]}"
+                : u.Email;
+
+            return Results.Ok(new
+            {
+                mensagem = $"Enviamos um código de 6 dígitos para {mascarado}. Ele vale por 10 minutos.",
+                emailConfigurado = email.Configurado
+            });
+        });
+
+        // ---------- Alterar senha: passo 2 — confirmar código + nova senha ----------
         group.MapPost("/senha", async (AlterarSenhaRequest req, ClaimsPrincipal user, AppDbContext db) =>
         {
             var usuarioId = GetUsuarioId(user);
@@ -71,13 +104,21 @@ public static class ContaEndpoints
             var u = await db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId);
             if (u is null) return Results.Unauthorized();
 
-            if (!PasswordHasher.Verify(req.SenhaAtual ?? "", u.SenhaHash))
-                return Results.BadRequest(new { erro = "Senha atual incorreta.", codigo = "SENHA_ATUAL_INCORRETA" });
+            if (string.IsNullOrEmpty(u.CodigoSenhaHash) || u.CodigoSenhaExpiraEm is null)
+                return Results.BadRequest(new { erro = "Solicite o código de verificação primeiro.", codigo = "CODIGO_NAO_SOLICITADO" });
+
+            if (u.CodigoSenhaExpiraEm < DateTime.UtcNow)
+                return Results.BadRequest(new { erro = "Código expirado. Solicite um novo.", codigo = "CODIGO_EXPIRADO" });
+
+            if (!PasswordHasher.Verify(req.Codigo ?? "", u.CodigoSenhaHash))
+                return Results.BadRequest(new { erro = "Código incorreto. Confira o e-mail e tente de novo.", codigo = "CODIGO_INCORRETO" });
 
             if (string.IsNullOrEmpty(req.NovaSenha) || req.NovaSenha.Length < 6)
                 return Results.BadRequest(new { erro = "A nova senha precisa ter pelo menos 6 caracteres.", codigo = "SENHA_CURTA" });
 
             u.SenhaHash = PasswordHasher.Hash(req.NovaSenha);
+            u.CodigoSenhaHash = null;
+            u.CodigoSenhaExpiraEm = null;
             await db.SaveChangesAsync();
 
             return Results.Ok(new { mensagem = "Senha alterada com sucesso." });

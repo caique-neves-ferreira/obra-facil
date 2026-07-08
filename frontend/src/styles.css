@@ -481,3 +481,27 @@ h1.titulo {
   color: #fff;
   padding: 3px 8px;
 }
+
+/* ---------- Abas da página Minha Conta ---------- */
+.abas-conta {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--ink);
+  flex-wrap: wrap;
+}
+.abas-conta .aba {
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.abas-conta .aba.ativa {
+  background: var(--ink);
+  color: #fff;
+}

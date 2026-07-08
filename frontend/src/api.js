@@ -57,8 +57,10 @@ export const api = {
   minhaConta: () => request('/api/conta'),
   atualizarConta: (dados) =>
     request('/api/conta', { method: 'PATCH', body: JSON.stringify(dados) }),
-  alterarSenha: (senhaAtual, novaSenha) =>
-    request('/api/conta/senha', { method: 'POST', body: JSON.stringify({ senhaAtual, novaSenha }) }),
+  solicitarCodigoSenha: () =>
+    request('/api/conta/senha/codigo', { method: 'POST' }),
+  alterarSenha: (codigo, novaSenha) =>
+    request('/api/conta/senha', { method: 'POST', body: JSON.stringify({ codigo, novaSenha }) }),
 };
 
 export const auth = {
@@ -69,6 +71,12 @@ export const auth = {
   usuario() {
     try { return JSON.parse(localStorage.getItem('obrafacil_usuario')); }
     catch { return null; }
+  },
+  sincronizarPlano(plano) {
+    const u = this.usuario();
+    if (u && u.plano !== plano) {
+      localStorage.setItem('obrafacil_usuario', JSON.stringify({ ...u, plano }));
+    }
   },
   logado() { return Boolean(getToken()); },
   sair() {

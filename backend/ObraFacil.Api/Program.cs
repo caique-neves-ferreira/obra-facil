@@ -46,6 +46,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddHttpClient<AnaliseIaService>();
 builder.Services.AddHttpClient<MercadoPagoService>();
+builder.Services.AddScoped<EmailService>();
 
 // ---------- CORS ----------
 var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
@@ -90,6 +91,11 @@ using (var scope = app.Services.CreateScope())
 
         db.Database.ExecuteSqlRaw(
             """ALTER TABLE assinaturas ADD COLUMN IF NOT EXISTS "ProAte" timestamptz NULL;""");
+
+        db.Database.ExecuteSqlRaw(
+            """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "CodigoSenhaHash" text NULL;""");
+        db.Database.ExecuteSqlRaw(
+            """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "CodigoSenhaExpiraEm" timestamptz NULL;""");
 
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS assinaturas (

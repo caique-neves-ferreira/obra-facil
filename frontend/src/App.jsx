@@ -31,6 +31,7 @@ function Topbar() {
   }
 
   const inicial = (usuario?.nome || '?').trim().charAt(0).toUpperCase();
+  const ehPro = usuario?.plano === 'Pro';
 
   return (
     <>
@@ -40,7 +41,7 @@ function Topbar() {
         </Link>
         <nav>
           {logado && <Link to="/projetos">Projetos</Link>}
-          <Link to="/planos">Planos</Link>
+          {(!logado || !ehPro) && <Link to="/planos">Planos</Link>}
           {logado && (
             <div className="avatar-menu" ref={menuRef}>
               <button
@@ -58,7 +59,8 @@ function Topbar() {
                     <small>{usuario?.email}</small>
                   </div>
                   <Link to="/conta" onClick={() => setMenuAberto(false)}>Minha conta</Link>
-                  <Link to="/planos" onClick={() => setMenuAberto(false)}>Planos</Link>
+                  <Link to="/conta?aba=senha" onClick={() => setMenuAberto(false)}>Alterar senha</Link>
+                  <Link to="/conta?aba=assinatura" onClick={() => setMenuAberto(false)}>Assinatura</Link>
                   <button onClick={sair}>Sair</button>
                 </div>
               )}
