@@ -47,6 +47,8 @@ builder.Services.AddSingleton<TokenService>();
 builder.Services.AddHttpClient<AnaliseIaService>();
 builder.Services.AddHttpClient<MercadoPagoService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddHttpClient<AssistenteObraService>();
+builder.Services.AddScoped<RelatorioService>();
 
 // ---------- CORS ----------
 var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
@@ -97,6 +99,9 @@ using (var scope = app.Services.CreateScope())
         db.Database.ExecuteSqlRaw(
             """ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS "CodigoSenhaExpiraEm" timestamptz NULL;""");
 
+        db.Database.ExecuteSqlRaw(
+            """ALTER TABLE etapas ADD COLUMN IF NOT EXISTS "CustoReal" numeric(12,2) NULL;""");
+
         db.Database.ExecuteSqlRaw("""
             CREATE TABLE IF NOT EXISTS assinaturas (
                 "Id" uuid PRIMARY KEY,
@@ -145,6 +150,7 @@ app.MapProjetoEndpoints();
 app.MapAnaliseEndpoints();
 app.MapAssinaturaEndpoints();
 app.MapContaEndpoints();
+app.MapObraToolsEndpoints();
 
 app.Run();
 

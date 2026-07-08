@@ -27,9 +27,13 @@ public record CriarProjetoRequest(
     List<string>? Etapas
 );
 
-public record AtualizarEtapaRequest(bool Concluida);
+public record AtualizarEtapaRequest(bool? Concluida, decimal? CustoReal);
 
-public record EtapaResponse(Guid Id, string Nome, int Ordem, bool Concluida);
+public record EtapaResponse(Guid Id, string Nome, int Ordem, bool Concluida, decimal? CustoReal);
+
+public record ChatMensagemDto(string Role, string Content);
+public record ChatRequest(List<ChatMensagemDto> Mensagens);
+public record ChatResponse(string Resposta);
 
 public record ProjetoResponse(
     Guid Id,
@@ -52,7 +56,7 @@ public record ProjetoResponse(
         p.Id, p.Nome, p.Descricao, p.Endereco, p.Regiao, p.TerrenoRegistrado, p.TipoArquitetura, p.Orcamento, p.AreaM2,
         p.Status.ToString(), p.DataInicio, p.PrevisaoTermino, p.CriadoEm,
         p.Etapas.OrderBy(e => e.Ordem)
-            .Select(e => new EtapaResponse(e.Id, e.Nome, e.Ordem, e.Concluida))
+            .Select(e => new EtapaResponse(e.Id, e.Nome, e.Ordem, e.Concluida, e.CustoReal))
             .ToList()
     );
 }

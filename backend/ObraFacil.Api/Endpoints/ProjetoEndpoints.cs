@@ -126,9 +126,12 @@ public static class ProjetoEndpoints
             if (etapa is null)
                 return Results.NotFound(new { erro = "Etapa não encontrada." });
 
-            etapa.Concluida = req.Concluida;
+            if (req.Concluida is not null)
+                etapa.Concluida = req.Concluida.Value;
+            if (req.CustoReal is not null)
+                etapa.CustoReal = req.CustoReal.Value >= 0 ? req.CustoReal.Value : null;
             await db.SaveChangesAsync();
-            return Results.Ok(new EtapaResponse(etapa.Id, etapa.Nome, etapa.Ordem, etapa.Concluida));
+            return Results.Ok(new EtapaResponse(etapa.Id, etapa.Nome, etapa.Ordem, etapa.Concluida, etapa.CustoReal));
         });
     }
 

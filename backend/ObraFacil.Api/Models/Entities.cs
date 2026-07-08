@@ -80,5 +80,6 @@ public class Etapa
     public string Nome { get; set; } = string.Empty;
     public int Ordem { get; set; }
     public bool Concluida { get; set; }
+    public decimal? CustoReal { get; set; }   // gasto informado pelo usuário; se nulo, usa a estimativa da IA
     public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 }
