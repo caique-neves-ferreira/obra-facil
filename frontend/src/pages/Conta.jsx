@@ -88,12 +88,12 @@ export default function Conta() {
     if (!window.confirm('Cancelar sua assinatura Pro? Você voltará ao plano Free.')) return;
     setSalvando(true);
     try {
-      await api.cancelarAssinatura();
+      const resp = await api.cancelarAssinatura();
       const c = await api.minhaConta();
       setConta(c);
       const a = await api.minhaAssinatura();
       setAssinatura(a.assinatura);
-      avisar('ok', 'Assinatura cancelada. Você voltou ao plano Free.');
+      avisar('ok', resp?.mensagem || 'Assinatura cancelada.');
     } catch (err) {
       avisar('erro', err.message);
     } finally {

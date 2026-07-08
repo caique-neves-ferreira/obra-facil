@@ -53,6 +53,7 @@ export const api = {
   cancelarAssinatura: () =>
     request('/api/assinaturas/cancelar', { method: 'POST' }),
   listarFaturas: () => request('/api/assinaturas/faturas'),
+  historicoAssinaturas: () => request('/api/assinaturas/historico'),
   minhaConta: () => request('/api/conta'),
   atualizarConta: (dados) =>
     request('/api/conta', { method: 'PATCH', body: JSON.stringify(dados) }),

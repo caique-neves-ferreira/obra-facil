@@ -93,6 +93,10 @@ public class MercadoPagoService
 
     /// <summary>Consulta o status atual do preapproval: authorized | paused | cancelled | pending.</summary>
     public async Task<string> ConsultarStatusAsync(string preapprovalId)
+        => (await ConsultarAssinaturaAsync(preapprovalId)).status;
+
+    /// <summary>Consulta o preapproval e retorna status + data da próxima cobrança (next_payment_date).</summary>
+    public async Task<(string status, DateTime? proximaCobranca)> ConsultarAssinaturaAsync(string preapprovalId)
     {
         HttpResponseMessage resp;
         string raw;
@@ -103,13 +107,11 @@ public class MercadoPagoService
         }
         catch (TaskCanceledException)
         {
-            throw new InvalidOperationException(
-                "Timeout ao consultar assinatura no Mercado Pago (30s).");
+            throw new InvalidOperationException("Timeout ao consultar assinatura no Mercado Pago (30s).");
         }
         catch (HttpRequestException ex)
         {
-            throw new InvalidOperationException(
-                $"Falha de rede ao consultar assinatura no Mercado Pago: {ex.Message}");
+            throw new InvalidOperationException($"Falha de rede ao consultar assinatura no Mercado Pago: {ex.Message}");
         }
 
         if (!resp.IsSuccessStatusCode)
@@ -117,7 +119,43 @@ public class MercadoPagoService
                 $"Falha ao consultar assinatura ({(int)resp.StatusCode}): {raw[..Math.Min(raw.Length, 300)]}");
 
         using var doc = JsonDocument.Parse(raw);
-        return doc.RootElement.GetProperty("status").GetString() ?? "pending";
+        var status = doc.RootElement.GetProperty("status").GetString() ?? "pending";
+        DateTime? proxima = null;
+        if (doc.RootElement.TryGetProperty("next_payment_date", out var np) &&
+            np.ValueKind == JsonValueKind.String &&
+            DateTime.TryParse(np.GetString(), null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var d))
+            proxima = DateTime.SpecifyKind(d, DateTimeKind.Utc);
+
+        return (status, proxima);
+    }
+
+    /// <summary>Dado o id de uma fatura recorrente (subscription_authorized_payment),
+    /// retorna o preapproval_id da assinatura correspondente.</summary>
+    public async Task<string?> ObterPreapprovalDaFaturaAsync(string faturaId)
+    {
+        HttpResponseMessage resp;
+        string raw;
+        try
+        {
+            resp = await _http.GetAsync($"authorized_payments/{faturaId}");
+            raw = await resp.Content.ReadAsStringAsync();
+        }
+        catch (TaskCanceledException)
+        {
+            throw new InvalidOperationException("Timeout ao consultar fatura no Mercado Pago (30s).");
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException($"Falha de rede ao consultar fatura no Mercado Pago: {ex.Message}");
+        }
+
+        if (!resp.IsSuccessStatusCode)
+            return null; // fatura desconhecida: ignora a notificação
+
+        using var doc = JsonDocument.Parse(raw);
+        return doc.RootElement.TryGetProperty("preapproval_id", out var pid)
+            ? pid.GetString()
+            : null;
     }
 
     /// <summary>Cancela o preapproval no Mercado Pago.</summary>

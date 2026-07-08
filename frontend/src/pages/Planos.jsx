@@ -29,6 +29,51 @@ const RECURSOS_PRO = [
   },
 ];
 
+const STATUS_ASSINATURA = {
+  Ativa: 'Ativa',
+  Pausada: 'Pausada (falha na cobrança)',
+  Cancelada: 'Cancelada',
+};
+
+function HistoricoAssinaturas({ historico }) {
+  if (!historico || historico.length === 0) return null;
+  return (
+    <section style={{ marginTop: 48 }}>
+      <span className="cota">Seu histórico</span>
+      <h2 className="titulo" style={{ fontSize: '1.7rem' }}>Períodos Pro da sua conta</h2>
+      <table className="tabela-faturas">
+        <thead>
+          <tr>
+            <th>Período</th>
+            <th>Valor</th>
+            <th>Situação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {historico.map((h) => {
+            const inicio = h.ativadaEm ? new Date(h.ativadaEm).toLocaleDateString('pt-BR') : '—';
+            const fim = h.proAte
+              ? new Date(h.proAte).toLocaleDateString('pt-BR')
+              : h.canceladaEm
+                ? new Date(h.canceladaEm).toLocaleDateString('pt-BR')
+                : 'atual';
+            return (
+              <tr key={h.id}>
+                <td>{inicio} — {fim}</td>
+                <td>R$ {Number(h.valorMensal).toFixed(2).replace('.', ',')}/mês</td>
+                <td>{STATUS_ASSINATURA[h.status] || h.status}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--ink-soft)', marginTop: 8 }}>
+        SEUS DADOS E PROJETOS SÃO PRESERVADOS MESMO APÓS O FIM DA ASSINATURA.
+      </p>
+    </section>
+  );
+}
+
 function Cadeado() {
   return (
     <div className="cadeado" aria-label="Recurso exclusivo do plano Pro">
@@ -81,6 +126,7 @@ export default function Planos() {
   const [processando, setProcessando] = useState(false);
   const [aguardandoAtivacao, setAguardandoAtivacao] = useState(retornoMp);
   const [erro, setErro] = useState('');
+  const [historico, setHistorico] = useState([]);
   const tentativas = useRef(0);
 
   async function carregarAssinatura() {
@@ -93,6 +139,9 @@ export default function Planos() {
   useEffect(() => {
     if (!logado) return;
     carregarAssinatura().catch(() => {});
+    api.historicoAssinaturas()
+      .then((h) => setHistorico(h.historico || []))
+      .catch(() => {});
   }, [logado]);
 
   // Retorno do checkout do Mercado Pago: aguarda a ativação do plano
@@ -130,6 +179,9 @@ export default function Planos() {
 
   /* ===================== Visão do assinante PRO ===================== */
   if (ehPro && !aguardandoAtivacao) {
+    const st = assinatura?.status;
+    const proAte = assinatura?.proAte ? new Date(assinatura.proAte) : null;
+
     return (
       <main className="container">
         <span className="cota">Seu plano</span>
@@ -138,20 +190,56 @@ export default function Planos() {
           Todos os recursos estão liberados na sua conta. Bom proveito na obra!
         </p>
 
-        <div className="card" style={{ marginBottom: 24, padding: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, justifyContent: 'space-between' }}>
-          <div>
-            <strong>Plano Pro ativo ✓</strong>
-            <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
-              {assinatura?.valorMensal != null && (
-                <>R$ {Number(assinatura.valorMensal).toFixed(2).replace('.', ',')}/mês</>
-              )}
-              {assinatura?.ativadaEm && (
-                <> · ativo desde {new Date(assinatura.ativadaEm).toLocaleDateString('pt-BR')}</>
-              )}
-            </p>
+        {erro && (
+          <div className="card" style={{ marginBottom: 20, padding: 16, borderColor: '#c00000' }}>
+            <strong>Ops:</strong> <span style={{ fontSize: '0.9rem' }}>{erro}</span>
           </div>
-          <Link to="/conta" className="btn secundario">Gerenciar assinatura</Link>
-        </div>
+        )}
+
+        {st === 'Ativa' && (
+          <div className="card" style={{ marginBottom: 24, padding: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, justifyContent: 'space-between' }}>
+            <div>
+              <strong>Plano Pro ativo ✓</strong>
+              <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
+                {assinatura?.valorMensal != null && (
+                  <>R$ {Number(assinatura.valorMensal).toFixed(2).replace('.', ',')}/mês</>
+                )}
+                {proAte && <> · próxima renovação em {proAte.toLocaleDateString('pt-BR')}</>}
+              </p>
+            </div>
+            <Link to="/conta" className="btn secundario">Gerenciar assinatura</Link>
+          </div>
+        )}
+
+        {st === 'Cancelada' && (
+          <div className="card" style={{ marginBottom: 24, padding: 16, borderColor: '#ed7d31', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, justifyContent: 'space-between' }}>
+            <div>
+              <strong>Assinatura cancelada</strong>
+              <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
+                {proAte
+                  ? <>Você mantém os recursos Pro até <strong>{proAte.toLocaleDateString('pt-BR')}</strong>. Depois disso, sua conta volta ao plano Free.</>
+                  : <>Sua conta voltará ao plano Free em breve.</>}
+              </p>
+            </div>
+            <button className="btn" onClick={assinar} disabled={processando}>
+              {processando ? 'Redirecionando…' : 'Assinar novamente'}
+            </button>
+          </div>
+        )}
+
+        {st === 'Pausada' && (
+          <div className="card" style={{ marginBottom: 24, padding: 16, borderColor: '#c00000' }}>
+            <strong>Problema na renovação</strong>
+            <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
+              Não conseguimos processar a cobrança no seu cartão. O Mercado Pago tentará novamente
+              nos próximos dias{proAte && <> — seus recursos Pro seguem garantidos até {proAte.toLocaleDateString('pt-BR')}</>}.
+              Se preferir, atualize a forma de pagamento assinando novamente.
+            </p>
+            <button className="btn" style={{ marginTop: 10 }} onClick={assinar} disabled={processando}>
+              {processando ? 'Redirecionando…' : 'Assinar com outro cartão'}
+            </button>
+          </div>
+        )}
 
         <section>
           <span className="cota">Incluído no seu plano</span>
@@ -165,6 +253,8 @@ export default function Planos() {
             FATURAS E CANCELAMENTO EM <Link to="/conta">MINHA CONTA</Link>
           </p>
         </section>
+
+        <HistoricoAssinaturas historico={historico} />
       </main>
     );
   }
@@ -250,6 +340,9 @@ export default function Planos() {
           * PRÉVIAS ILUSTRATIVAS — RELATÓRIO E ASSISTENTE EM DESENVOLVIMENTO
         </p>
       </section>
+
+      {/* Histórico: só aparece para quem já foi assinante */}
+      <HistoricoAssinaturas historico={historico} />
     </main>
   );
 }

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using ObraFacil.Api.Data;
 using ObraFacil.Api.Models;
@@ -27,6 +28,27 @@ public static class PlanoFilter
             var usuario = await db.Usuarios.FindAsync(usuarioId);
             if (usuario is null)
                 return Results.Unauthorized();
+
+            if (usuario.Plano >= planoMinimo && planoMinimo >= Plano.Pro)
+            {
+                // Expiração da carência: Pro sem assinatura ativa vale só até ProAte
+                var assinatura = await db.Assinaturas
+                    .AsNoTracking()
+                    .Where(a => a.UsuarioId == usuarioId)
+                    .OrderByDescending(a => a.CriadaEm)
+                    .FirstOrDefaultAsync();
+
+                var vigente = assinatura is not null &&
+                    (assinatura.Status == StatusAssinatura.Ativa ||
+                     (assinatura.ProAte.HasValue && assinatura.ProAte.Value > DateTime.UtcNow));
+
+                // assinatura == null: plano concedido manualmente (ex.: cortesia) — permite
+                if (assinatura is not null && !vigente)
+                {
+                    usuario.Plano = Plano.Free;
+                    await db.SaveChangesAsync();
+                }
+            }
 
             if (usuario.Plano < planoMinimo)
             {

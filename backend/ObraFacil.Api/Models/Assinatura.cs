@@ -23,6 +23,11 @@ public class Assinatura
 
     public StatusAssinatura Status { get; set; } = StatusAssinatura.Pendente;
     public decimal ValorMensal { get; set; }
+
+    /// <summary>Data até a qual o plano Pro está garantido (próxima cobrança do MP).
+    /// Cancelamento ou falha de cartão não removem o Pro antes desta data.</summary>
+    public DateTime? ProAte { get; set; }
+
     public DateTime CriadaEm { get; set; } = DateTime.UtcNow;
     public DateTime? AtivadaEm { get; set; }
     public DateTime? CanceladaEm { get; set; }
