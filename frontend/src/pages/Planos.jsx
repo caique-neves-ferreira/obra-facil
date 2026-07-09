@@ -164,6 +164,7 @@ export default function Planos() {
   const [erro, setErro] = useState('');
   const [historico, setHistorico] = useState([]);
   const [faturas, setFaturas] = useState([]);
+  const [verVitrine, setVerVitrine] = useState(false); // Free puro: só abre a vitrine ao clicar
   const tentativas = useRef(0);
 
   async function carregarAssinatura() {
@@ -304,40 +305,9 @@ export default function Planos() {
   /* ===================== Visão Free / deslogado ===================== */
   const jaFoiAssinante = logado && historico.length > 0;
 
-  return (
-    <main className="container">
-      <span className="cota">Planos</span>
-      <h1 className="titulo">Escolha o plano da sua obra</h1>
-      <p className="subtitulo">
-        Comece grátis e faça upgrade quando precisar de mais projetos e recursos avançados.
-      </p>
-
-      {aguardandoAtivacao && (
-        <div className="card" style={{ marginBottom: 20, padding: 16 }}>
-          <strong>Confirmando seu pagamento…</strong>
-          <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
-            Assim que o Mercado Pago confirmar, seu plano Pro é ativado automaticamente
-            — pode levar alguns segundos.
-          </p>
-        </div>
-      )}
-      {erro && (
-        <div className="card" style={{ marginBottom: 20, padding: 16, borderColor: '#c00000' }}>
-          <strong>Ops:</strong> <span style={{ fontSize: '0.9rem' }}>{erro}</span>
-        </div>
-      )}
-
-      {/* Ex-assinante: card de assinatura atual (Free) com CTA para reassinar */}
-      {jaFoiAssinante && (
-        <div className="card" style={{ marginBottom: 28, padding: 20 }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Assinatura</h3>
-          <p style={{ margin: '10px 0 16px' }}>Plano atual: <strong>Free</strong></p>
-          <button className="btn" onClick={assinar} disabled={processando || aguardandoAtivacao}>
-            {processando ? 'Redirecionando…' : 'Conhecer o plano Pro'}
-          </button>
-        </div>
-      )}
-
+  // Cards Free/Pro + vitrine de recursos (reutilizado)
+  const vitrinePlanos = (
+    <>
       <div className="grid-planos">
         <article className="card plano">
           <h3>Free</h3>
@@ -371,7 +341,7 @@ export default function Planos() {
           </ul>
           {logado ? (
             <button className="btn" onClick={assinar} disabled={processando || aguardandoAtivacao}>
-              {processando ? 'Redirecionando…' : (jaFoiAssinante ? 'Voltar a ser Pro' : 'Assinar Pro')}
+              {processando ? 'Redirecionando…' : 'Assinar Pro'}
             </button>
           ) : (
             <Link to="/login" className="btn">Entrar para assinar</Link>
@@ -382,10 +352,6 @@ export default function Planos() {
         </article>
       </div>
 
-      {/* Faturas reais pagas (ex-assinante) */}
-      <FaturasPagas faturas={faturas} />
-
-      {/* ---------- Vitrine de recursos Pro (bloqueados) ---------- */}
       <section style={{ marginTop: 48 }}>
         <span className="cota">Exclusivo do Pro</span>
         <h2 className="titulo" style={{ fontSize: '1.7rem' }}>O que você destrava no upgrade</h2>
@@ -398,9 +364,59 @@ export default function Planos() {
           * PRÉVIAS ILUSTRATIVAS — RELATÓRIO E ASSISTENTE EM DESENVOLVIMENTO
         </p>
       </section>
+    </>
+  );
 
-      {/* Histórico de períodos Pro (ex-assinante) */}
-      <HistoricoAssinaturas historico={historico} />
+  return (
+    <main className="container">
+      <span className="cota">Planos</span>
+      <h1 className="titulo">Escolha o plano da sua obra</h1>
+
+      {aguardandoAtivacao && (
+        <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+          <strong>Confirmando seu pagamento…</strong>
+          <p style={{ fontSize: '0.85rem', marginTop: 4 }}>
+            Assim que o Mercado Pago confirmar, seu plano Pro é ativado automaticamente
+            — pode levar alguns segundos.
+          </p>
+        </div>
+      )}
+      {erro && (
+        <div className="card" style={{ marginBottom: 20, padding: 16, borderColor: '#c00000' }}>
+          <strong>Ops:</strong> <span style={{ fontSize: '0.9rem' }}>{erro}</span>
+        </div>
+      )}
+
+      {/* Deslogado: vitrine direta */}
+      {!logado && vitrinePlanos}
+
+      {/* Ex-assinante: card de assinatura + faturas pagas (sem vitrine) */}
+      {logado && jaFoiAssinante && (
+        <>
+          <div className="card" style={{ marginBottom: 8, padding: 20 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Assinatura</h3>
+            <p style={{ margin: '10px 0 16px' }}>Plano atual: <strong>Free</strong></p>
+            <button className="btn" onClick={assinar} disabled={processando || aguardandoAtivacao}>
+              {processando ? 'Redirecionando…' : 'Voltar a ser Pro'}
+            </button>
+          </div>
+          <FaturasPagas faturas={faturas} />
+        </>
+      )}
+
+      {/* Free puro: resumo com CTA; só abre a vitrine ao clicar */}
+      {logado && !jaFoiAssinante && !verVitrine && (
+        <div className="card" style={{ padding: 20 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Assinatura</h3>
+          <p style={{ margin: '10px 0 16px' }}>Plano atual: <strong>Free</strong></p>
+          <button className="btn" onClick={() => setVerVitrine(true)}>
+            Conhecer o plano Pro
+          </button>
+        </div>
+      )}
+
+      {/* Free puro após clicar: vitrine completa */}
+      {logado && !jaFoiAssinante && verVitrine && vitrinePlanos}
     </main>
   );
 }
