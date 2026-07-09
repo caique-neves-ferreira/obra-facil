@@ -139,6 +139,33 @@ public static class AssinaturaEndpoints
             return Results.Ok(new CheckoutResponse(initPoint, mpId));
         });
 
+        // ---------- DEBUG temporário: estado bruto das assinaturas ----------
+        // TODO: remover após diagnóstico
+        group.MapGet("/debug", async (ClaimsPrincipal user, AppDbContext db) =>
+        {
+            var usuarioId = GetUsuarioId(user);
+            if (usuarioId is null) return Results.Unauthorized();
+
+            var usuario = await db.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id == usuarioId);
+            var assinaturas = await db.Assinaturas
+                .AsNoTracking()
+                .Where(a => a.UsuarioId == usuarioId)
+                .OrderByDescending(a => a.CriadaEm)
+                .Select(a => new
+                {
+                    a.Id, a.MercadoPagoId, Status = a.Status.ToString(),
+                    a.ValorMensal, a.CriadaEm, a.AtivadaEm, a.CanceladaEm, a.ProAte
+                })
+                .ToListAsync();
+
+            return Results.Ok(new
+            {
+                usuario = new { usuario?.Email, Plano = usuario?.Plano.ToString() },
+                totalAssinaturas = assinaturas.Count,
+                assinaturas
+            });
+        });
+
         // ---------- Histórico de assinaturas (períodos Pro) ----------
         group.MapGet("/historico", async (ClaimsPrincipal user, AppDbContext db) =>
         {
