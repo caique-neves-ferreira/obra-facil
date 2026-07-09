@@ -1,56 +1,110 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Mail;
+using System.Text;
+using System.Text.Json;
 
 namespace ObraFacil.Api.Services;
 
 /// <summary>
-/// Envio de e-mails transacionais via SMTP.
-/// Variáveis de ambiente (Render):
-///   SMTP_HOST  -> ex.: smtp.gmail.com | smtp.resend.com
-///   SMTP_PORT  -> ex.: 587 (default)
-///   SMTP_USER  -> usuário/login SMTP
-///   SMTP_PASS  -> senha (Gmail: senha de app)
-///   SMTP_FROM  -> remetente, ex.: "Obra Fácil <no-reply@seudominio.com>"
-/// Sem SMTP configurado, o conteúdo é logado no console (apenas para DEV).
+/// Envio de e-mails transacionais.
+/// Ordem de preferência:
+///   1) Resend (HTTP, porta 443) — funciona no Render free. Env: RESEND_API_KEY, SMTP_FROM
+///   2) SMTP (portas 25/465/587) — bloqueado no Render free; útil só em host pago.
+///        Env: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+/// Sem nenhum configurado, loga o conteúdo (DEV).
 /// </summary>
 public class EmailService
 {
-    private readonly string? _host;
-    private readonly int _port;
-    private readonly string? _user;
-    private readonly string? _pass;
-    private readonly string _from;
+    private readonly HttpClient _http;
     private readonly ILogger<EmailService> _logger;
 
-    public EmailService(ILogger<EmailService> logger)
+    private readonly string? _resendKey;
+    private readonly string? _smtpHost;
+    private readonly int _smtpPort;
+    private readonly string? _smtpUser;
+    private readonly string? _smtpPass;
+    private readonly string _from;
+
+    public EmailService(HttpClient http, ILogger<EmailService> logger)
     {
+        _http = http;
         _logger = logger;
-        _host = Environment.GetEnvironmentVariable("SMTP_HOST");
-        _port = int.TryParse(Environment.GetEnvironmentVariable("SMTP_PORT"), out var p) ? p : 587;
-        _user = Environment.GetEnvironmentVariable("SMTP_USER");
-        _pass = Environment.GetEnvironmentVariable("SMTP_PASS");
-        _from = Environment.GetEnvironmentVariable("SMTP_FROM") ?? "Obra Fácil <no-reply@obrafacil.app>";
+
+        _resendKey = Environment.GetEnvironmentVariable("RESEND_API_KEY");
+        _smtpHost = Environment.GetEnvironmentVariable("SMTP_HOST");
+        _smtpPort = int.TryParse(Environment.GetEnvironmentVariable("SMTP_PORT"), out var p) ? p : 587;
+        _smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
+        _smtpPass = Environment.GetEnvironmentVariable("SMTP_PASS");
+        _from = Environment.GetEnvironmentVariable("SMTP_FROM") ?? "Obra Fácil <onboarding@resend.dev>";
     }
 
-    public bool Configurado => !string.IsNullOrEmpty(_host);
+    public bool Configurado => !string.IsNullOrEmpty(_resendKey) || !string.IsNullOrEmpty(_smtpHost);
 
     public async Task EnviarAsync(string para, string assunto, string corpo)
     {
-        if (!Configurado)
+        if (!string.IsNullOrEmpty(_resendKey))
         {
-            // DEV ONLY: sem SMTP, loga o conteúdo para permitir testes.
-            // TODO: remover este fallback antes do lançamento público.
-            _logger.LogWarning("SMTP não configurado. E-mail para {Para} | Assunto: {Assunto} | Corpo: {Corpo}",
-                para, assunto, corpo);
+            await EnviarViaResendAsync(para, assunto, corpo);
             return;
         }
 
-        using var client = new SmtpClient(_host, _port)
+        if (!string.IsNullOrEmpty(_smtpHost))
+        {
+            await EnviarViaSmtpAsync(para, assunto, corpo);
+            return;
+        }
+
+        // DEV ONLY: sem provedor configurado, loga o conteúdo.
+        // TODO: remover este fallback antes do lançamento público.
+        _logger.LogWarning("E-mail nao configurado. Para {Para} | {Assunto} | {Corpo}", para, assunto, corpo);
+    }
+
+    // ---------------- Resend (HTTP) ----------------
+    private async Task EnviarViaResendAsync(string para, string assunto, string corpo)
+    {
+        var payload = new
+        {
+            from = _from,
+            to = new[] { para },
+            subject = assunto,
+            text = corpo,
+        };
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _resendKey);
+        req.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+        HttpResponseMessage resp;
+        string raw;
+        try
+        {
+            resp = await _http.SendAsync(req);
+            raw = await resp.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha de rede ao enviar via Resend para {Para}", para);
+            throw new InvalidOperationException($"Falha de rede ao enviar e-mail (Resend): {ex.Message}");
+        }
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            _logger.LogError("Resend retornou {Status}: {Corpo}", (int)resp.StatusCode, raw);
+            throw new InvalidOperationException(
+                $"Erro no envio de e-mail (Resend {(int)resp.StatusCode}): {raw[..Math.Min(raw.Length, 300)]}");
+        }
+    }
+
+    // ---------------- SMTP (fallback host pago) ----------------
+    private async Task EnviarViaSmtpAsync(string para, string assunto, string corpo)
+    {
+        using var client = new SmtpClient(_smtpHost, _smtpPort)
         {
             EnableSsl = true,
             DeliveryMethod = SmtpDeliveryMethod.Network,
             UseDefaultCredentials = false,
-            Credentials = new NetworkCredential(_user, _pass),
+            Credentials = new NetworkCredential(_smtpUser, _smtpPass),
         };
         using var msg = new MailMessage
         {
@@ -68,11 +122,10 @@ public class EmailService
         {
             _logger.LogError(ex, "Falha SMTP ao enviar para {Para}: {Status}", para, ex.StatusCode);
             throw new InvalidOperationException(
-                $"Erro SMTP ({ex.StatusCode}): {ex.Message}. Verifique SMTP_USER/SMTP_PASS (use senha de app do Gmail).");
+                $"Erro SMTP ({ex.StatusCode}): {ex.Message}. Em hospedagem gratuita as portas SMTP costumam ser bloqueadas — use Resend (RESEND_API_KEY).");
         }
     }
 
-    // Extrai "email@dominio" de um remetente no formato "Nome <email@dominio>" ou "email@dominio"
     private static string ExtrairEmail(string from)
     {
         var i = from.IndexOf('<');
@@ -83,6 +136,6 @@ public class EmailService
     private static string ExtrairNome(string from)
     {
         var i = from.IndexOf('<');
-        return i > 0 ? from[..i].Trim() : "Obra Fácil";
+        return i > 0 ? from[..i].Trim() : "Obra Facil";
     }
 }

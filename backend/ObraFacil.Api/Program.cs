@@ -46,7 +46,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddHttpClient<AnaliseIaService>();
 builder.Services.AddHttpClient<MercadoPagoService>();
-builder.Services.AddScoped<EmailService>();
+builder.Services.AddHttpClient<EmailService>();
 builder.Services.AddHttpClient<AssistenteObraService>();
 builder.Services.AddScoped<RelatorioService>();
 
