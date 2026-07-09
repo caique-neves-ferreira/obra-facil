@@ -48,9 +48,41 @@ public class EmailService
         using var client = new SmtpClient(_host, _port)
         {
             EnableSsl = true,
+            DeliveryMethod = SmtpDeliveryMethod.Network,
+            UseDefaultCredentials = false,
             Credentials = new NetworkCredential(_user, _pass),
         };
-        using var msg = new MailMessage(_from, para, assunto, corpo);
-        await client.SendMailAsync(msg);
+        using var msg = new MailMessage
+        {
+            From = new MailAddress(ExtrairEmail(_from), ExtrairNome(_from)),
+            Subject = assunto,
+            Body = corpo,
+        };
+        msg.To.Add(para);
+
+        try
+        {
+            await client.SendMailAsync(msg);
+        }
+        catch (SmtpException ex)
+        {
+            _logger.LogError(ex, "Falha SMTP ao enviar para {Para}: {Status}", para, ex.StatusCode);
+            throw new InvalidOperationException(
+                $"Erro SMTP ({ex.StatusCode}): {ex.Message}. Verifique SMTP_USER/SMTP_PASS (use senha de app do Gmail).");
+        }
+    }
+
+    // Extrai "email@dominio" de um remetente no formato "Nome <email@dominio>" ou "email@dominio"
+    private static string ExtrairEmail(string from)
+    {
+        var i = from.IndexOf('<');
+        var j = from.IndexOf('>');
+        return (i >= 0 && j > i) ? from[(i + 1)..j].Trim() : from.Trim();
+    }
+
+    private static string ExtrairNome(string from)
+    {
+        var i = from.IndexOf('<');
+        return i > 0 ? from[..i].Trim() : "Obra Fácil";
     }
 }

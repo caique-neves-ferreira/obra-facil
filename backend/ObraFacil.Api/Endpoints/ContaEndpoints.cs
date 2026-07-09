@@ -76,12 +76,24 @@ public static class ContaEndpoints
             u.CodigoSenhaExpiraEm = DateTime.UtcNow.AddMinutes(10);
             await db.SaveChangesAsync();
 
-            await email.EnviarAsync(
-                u.Email,
-                "Obra Fácil — Código para alteração de senha",
-                $"Olá, {u.Nome.Split(' ')[0]}!\n\n" +
-                $"Seu código para alterar a senha é: {codigo}\n\n" +
-                "Ele vale por 10 minutos. Se você não pediu essa alteração, ignore este e-mail.");
+            try
+            {
+                await email.EnviarAsync(
+                    u.Email,
+                    "Obra Fácil — Código para alteração de senha",
+                    $"Olá, {u.Nome.Split(' ')[0]}!\n\n" +
+                    $"Seu código para alterar a senha é: {codigo}\n\n" +
+                    "Ele vale por 10 minutos. Se você não pediu essa alteração, ignore este e-mail.");
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new
+                {
+                    erro = "Não foi possível enviar o e-mail com o código. Verifique a configuração de e-mail e tente novamente.",
+                    codigo = "EMAIL_ERRO",
+                    detalhe = ex.Message // TODO: remover detalhe antes do lançamento público
+                }, statusCode: 502);
+            }
 
             var arroba = u.Email.IndexOf('@');
             var mascarado = arroba > 1
