@@ -24,6 +24,7 @@ export default function Conta() {
   const [conta, setConta] = useState(null);
   const [assinatura, setAssinatura] = useState(null);
   const [faturas, setFaturas] = useState([]);
+  const [historico, setHistorico] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
   const [nome, setNome] = useState('');
@@ -54,6 +55,8 @@ export default function Conta() {
           const f = await api.listarFaturas().catch(() => ({ faturas: [] }));
           setFaturas(f.faturas || []);
         }
+        const h = await api.historicoAssinaturas().catch(() => ({ historico: [] }));
+        setHistorico(h.historico || []);
       } catch (e) {
         setMsg({ tipo: 'erro', texto: e.message });
       } finally {
@@ -292,6 +295,39 @@ export default function Conta() {
               AO CANCELAR, VOCÊ MANTÉM O PRO ATÉ O FIM DO PERÍODO JÁ PAGO. SEM MULTA, SEM FIDELIDADE.
             </p>
           </>
+        )}
+
+        {historico.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <h4 style={{ marginBottom: 8 }}>Histórico de assinaturas</h4>
+            <table className="tabela-faturas">
+              <thead>
+                <tr>
+                  <th>Período</th>
+                  <th>Valor</th>
+                  <th>Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historico.map((h) => {
+                  const inicio = h.ativadaEm ? new Date(h.ativadaEm).toLocaleDateString('pt-BR') : '—';
+                  const fim = h.proAte
+                    ? new Date(h.proAte).toLocaleDateString('pt-BR')
+                    : h.canceladaEm
+                      ? new Date(h.canceladaEm).toLocaleDateString('pt-BR')
+                      : 'atual';
+                  const sit = h.status === 'Pausada' ? 'Pausada (falha na cobrança)' : h.status;
+                  return (
+                    <tr key={h.id}>
+                      <td>{inicio} — {fim}</td>
+                      <td>R$ {Number(h.valorMensal).toFixed(2).replace('.', ',')}/mês</td>
+                      <td>{sit}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
       )}

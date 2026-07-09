@@ -250,7 +250,7 @@ export default function Planos() {
                 {proAte && <> · próxima renovação em {proAte.toLocaleDateString('pt-BR')}</>}
               </p>
             </div>
-            <Link to="/conta" className="btn secundario">Gerenciar assinatura</Link>
+            <Link to="/conta?aba=assinatura" className="btn secundario">Gerenciar assinatura</Link>
           </div>
         )}
 
@@ -293,11 +293,9 @@ export default function Planos() {
             ))}
           </div>
           <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--ink-soft)', marginTop: 10 }}>
-            FATURAS E CANCELAMENTO EM <Link to="/conta">MINHA CONTA</Link>
+            FATURAS E CANCELAMENTO EM <Link to="/conta?aba=assinatura">MINHA CONTA</Link>
           </p>
         </section>
-
-        <HistoricoAssinaturas historico={historico} />
       </main>
     );
   }
