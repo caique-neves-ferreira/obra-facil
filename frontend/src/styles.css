@@ -505,3 +505,50 @@ h1.titulo {
   background: var(--ink);
   color: #fff;
 }
+
+/* ---------- Assistente IA (chat) ---------- */
+.chat-janela {
+  border: 2px solid var(--ink);
+  background: #fff;
+  min-height: 320px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 16px;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chat-bolha {
+  max-width: 82%;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.chat-bolha.user {
+  align-self: flex-end;
+  background: var(--ink);
+  color: #fff;
+}
+.chat-bolha.assistant {
+  align-self: flex-start;
+  background: #eceae4;
+  color: var(--ink);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.chat-bolha.digitando { opacity: 0.65; font-style: italic; }
+.chat-vazio { color: var(--ink-soft); font-size: 0.9rem; }
+.chat-sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip {
+  background: none;
+  border: 1px solid var(--ink);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 16px;
+}
+.chip:hover { background: var(--ink); color: #fff; }
+.chat-entrada { display: flex; gap: 10px; }
+.chat-entrada input { flex: 1; }

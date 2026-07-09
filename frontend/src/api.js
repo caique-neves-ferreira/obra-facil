@@ -42,11 +42,39 @@ export const api = {
     request(`/api/projetos/${projetoId}/analise`, { method: 'POST' }),
   excluirProjeto: (id) =>
     request(`/api/projetos/${id}`, { method: 'DELETE' }),
-  atualizarEtapa: (projetoId, etapaId, concluida) =>
+  atualizarEtapa: (projetoId, etapaId, dados) =>
     request(`/api/projetos/${projetoId}/etapas/${etapaId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ concluida }),
+      body: JSON.stringify(dados),
     }),
+  perguntarAssistente: (projetoId, mensagens) =>
+    request(`/api/projetos/${projetoId}/assistente`, {
+      method: 'POST',
+      body: JSON.stringify({ mensagens }),
+    }),
+  baixarRelatorio: async (projetoId, tipo) => {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/api/projetos/${projetoId}/relatorios/${tipo}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) {
+      let msg = 'Não foi possível gerar o relatório.';
+      try { const j = await res.json(); msg = j.erro || msg; } catch { /* corpo não-JSON */ }
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const dispo = res.headers.get('Content-Disposition') || '';
+    const m = dispo.match(/filename="?([^"]+)"?/);
+    const nome = m ? m[1] : tipo;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   minhaAssinatura: () => request('/api/assinaturas/minha'),
   iniciarCheckout: () =>
     request('/api/assinaturas/checkout', { method: 'POST' }),

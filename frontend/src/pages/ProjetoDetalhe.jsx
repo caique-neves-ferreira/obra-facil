@@ -283,29 +283,54 @@ export default function ProjetoDetalhe() {
               <h2 className="titulo" style={{ fontSize: '1.6rem' }}>Etapas do planejamento</h2>
               <div className="card" style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {projeto.etapas.map((e) => (
-                  <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={e.concluida}
-                      onChange={async (ev) => {
-                        const concluida = ev.target.checked;
-                        setProjeto((pr) => ({
-                          ...pr,
-                          etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, concluida } : x),
-                        }));
-                        try { await api.atualizarEtapa(projeto.id, e.id, concluida); }
-                        catch { /* reverte em caso de falha */
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.95rem', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, minWidth: 180 }}>
+                      <input
+                        type="checkbox"
+                        checked={e.concluida}
+                        onChange={async (ev) => {
+                          const concluida = ev.target.checked;
                           setProjeto((pr) => ({
                             ...pr,
-                            etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, concluida: !concluida } : x),
+                            etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, concluida } : x),
                           }));
-                        }
-                      }}
-                    />
-                    <span style={{ textDecoration: e.concluida ? 'line-through' : 'none', color: e.concluida ? 'var(--ink-soft)' : 'var(--ink)' }}>
-                      {e.nome}
-                    </span>
-                  </label>
+                          try { await api.atualizarEtapa(projeto.id, e.id, { concluida }); }
+                          catch { /* reverte em caso de falha */
+                            setProjeto((pr) => ({
+                              ...pr,
+                              etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, concluida: !concluida } : x),
+                            }));
+                          }
+                        }}
+                      />
+                      <span style={{ textDecoration: e.concluida ? 'line-through' : 'none', color: e.concluida ? 'var(--ink-soft)' : 'var(--ink)' }}>
+                        {e.nome}
+                      </span>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Gasto real desta etapa (opcional). Se vazio, usamos a estimativa da IA.">
+                      <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="gasto real"
+                        defaultValue={e.custoReal ?? ''}
+                        style={{ width: 110 }}
+                        onBlur={async (ev) => {
+                          const v = ev.target.value.trim();
+                          const custoReal = v === '' ? null : Number(v);
+                          if (custoReal !== null && Number.isNaN(custoReal)) return;
+                          try {
+                            await api.atualizarEtapa(projeto.id, e.id, { custoReal: custoReal === null ? -1 : custoReal });
+                            setProjeto((pr) => ({
+                              ...pr,
+                              etapas: pr.etapas.map((x) => x.id === e.id ? { ...x, custoReal } : x),
+                            }));
+                          } catch { /* silencioso: mantém valor anterior */ }
+                        }}
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>

@@ -8,6 +8,8 @@ import NovoProjeto from './pages/NovoProjeto';
 import ProjetoDetalhe from './pages/ProjetoDetalhe';
 import Planos from './pages/Planos';
 import Conta from './pages/Conta';
+import Assistente from './pages/Assistente';
+import Relatorios from './pages/Relatorios';
 
 function Topbar() {
   const navigate = useNavigate();
@@ -31,7 +33,6 @@ function Topbar() {
   }
 
   const inicial = (usuario?.nome || '?').trim().charAt(0).toUpperCase();
-  const ehPro = usuario?.plano === 'Pro';
 
   return (
     <>
@@ -41,7 +42,8 @@ function Topbar() {
         </Link>
         <nav>
           {logado && <Link to="/projetos">Projetos</Link>}
-          {(!logado || !ehPro) && <Link to="/planos">Planos</Link>}
+          {logado && <Link to="/assistente">Assistente IA</Link>}
+          {logado && <Link to="/relatorios">Relatórios</Link>}
           {logado && (
             <div className="avatar-menu" ref={menuRef}>
               <button
@@ -60,12 +62,14 @@ function Topbar() {
                   </div>
                   <Link to="/conta" onClick={() => setMenuAberto(false)}>Minha conta</Link>
                   <Link to="/conta?aba=senha" onClick={() => setMenuAberto(false)}>Alterar senha</Link>
-                  <Link to="/conta?aba=assinatura" onClick={() => setMenuAberto(false)}>Assinatura</Link>
+                  <Link to="/planos" onClick={() => setMenuAberto(false)}>Planos</Link>
                   <button onClick={sair}>Sair</button>
                 </div>
               )}
             </div>
           )}
+          {!logado && <Link to="/planos">Planos</Link>}
+          {!logado && <Link to="/login">Entrar</Link>}
         </nav>
       </header>
       <div className="hatch" />
@@ -86,6 +90,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/planos" element={<Planos />} />
         <Route path="/conta" element={<Protegida><Conta /></Protegida>} />
+        <Route path="/assistente" element={<Protegida><Assistente /></Protegida>} />
+        <Route path="/relatorios" element={<Protegida><Relatorios /></Protegida>} />
         <Route path="/projetos" element={<Protegida><Dashboard /></Protegida>} />
         <Route path="/projetos/novo" element={<Protegida><NovoProjeto /></Protegida>} />
         <Route path="/projetos/:id" element={<Protegida><ProjetoDetalhe /></Protegida>} />
