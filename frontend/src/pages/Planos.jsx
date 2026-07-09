@@ -29,6 +29,42 @@ const RECURSOS_PRO = [
   },
 ];
 
+const STATUS_FATURA = {
+  scheduled: 'Agendada',
+  processed: 'Paga',
+  recycling: 'Reprocessando',
+  cancelled: 'Cancelada',
+};
+
+function FaturasPagas({ faturas }) {
+  const pagas = (faturas || []).filter((f) => f.status === 'processed' || f.valor > 0);
+  if (pagas.length === 0) return null;
+  return (
+    <section style={{ marginTop: 32 }}>
+      <span className="cota">Suas faturas</span>
+      <h2 className="titulo" style={{ fontSize: '1.7rem' }}>Faturas pagas</h2>
+      <table className="tabela-faturas">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Valor</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pagas.map((f) => (
+            <tr key={f.id}>
+              <td>{f.data ? new Date(f.data).toLocaleDateString('pt-BR') : '—'}</td>
+              <td>R$ {Number(f.valor).toFixed(2).replace('.', ',')}</td>
+              <td>{STATUS_FATURA[f.status] || f.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 const STATUS_ASSINATURA = {
   Ativa: 'Ativa',
   Pausada: 'Pausada (falha na cobrança)',
@@ -127,6 +163,7 @@ export default function Planos() {
   const [aguardandoAtivacao, setAguardandoAtivacao] = useState(retornoMp);
   const [erro, setErro] = useState('');
   const [historico, setHistorico] = useState([]);
+  const [faturas, setFaturas] = useState([]);
   const tentativas = useRef(0);
 
   async function carregarAssinatura() {
@@ -142,6 +179,10 @@ export default function Planos() {
     carregarAssinatura().catch(() => {});
     api.historicoAssinaturas()
       .then((h) => setHistorico(h.historico || []))
+      .catch(() => {});
+    // Faturas reais do MP: úteis tanto para Pro quanto para ex-assinante
+    api.listarFaturas()
+      .then((f) => setFaturas(f.faturas || []))
       .catch(() => {});
   }, [logado]);
 
@@ -261,6 +302,8 @@ export default function Planos() {
   }
 
   /* ===================== Visão Free / deslogado ===================== */
+  const jaFoiAssinante = logado && historico.length > 0;
+
   return (
     <main className="container">
       <span className="cota">Planos</span>
@@ -281,6 +324,17 @@ export default function Planos() {
       {erro && (
         <div className="card" style={{ marginBottom: 20, padding: 16, borderColor: '#c00000' }}>
           <strong>Ops:</strong> <span style={{ fontSize: '0.9rem' }}>{erro}</span>
+        </div>
+      )}
+
+      {/* Ex-assinante: card de assinatura atual (Free) com CTA para reassinar */}
+      {jaFoiAssinante && (
+        <div className="card" style={{ marginBottom: 28, padding: 20 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>Assinatura</h3>
+          <p style={{ margin: '10px 0 16px' }}>Plano atual: <strong>Free</strong></p>
+          <button className="btn" onClick={assinar} disabled={processando || aguardandoAtivacao}>
+            {processando ? 'Redirecionando…' : 'Conhecer o plano Pro'}
+          </button>
         </div>
       )}
 
@@ -317,7 +371,7 @@ export default function Planos() {
           </ul>
           {logado ? (
             <button className="btn" onClick={assinar} disabled={processando || aguardandoAtivacao}>
-              {processando ? 'Redirecionando…' : 'Assinar Pro'}
+              {processando ? 'Redirecionando…' : (jaFoiAssinante ? 'Voltar a ser Pro' : 'Assinar Pro')}
             </button>
           ) : (
             <Link to="/login" className="btn">Entrar para assinar</Link>
@@ -327,6 +381,9 @@ export default function Planos() {
           </p>
         </article>
       </div>
+
+      {/* Faturas reais pagas (ex-assinante) */}
+      <FaturasPagas faturas={faturas} />
 
       {/* ---------- Vitrine de recursos Pro (bloqueados) ---------- */}
       <section style={{ marginTop: 48 }}>
@@ -342,7 +399,7 @@ export default function Planos() {
         </p>
       </section>
 
-      {/* Histórico: só aparece para quem já foi assinante */}
+      {/* Histórico de períodos Pro (ex-assinante) */}
       <HistoricoAssinaturas historico={historico} />
     </main>
   );
