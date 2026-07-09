@@ -96,6 +96,40 @@ public static class ProjetoEndpoints
             return Results.Created($"/api/projetos/{projeto.Id}", ProjetoResponse.From(projeto));
         });
 
+        group.MapPut("/{id:guid}", async (Guid id, CriarProjetoRequest req, ClaimsPrincipal user, AppDbContext db) =>
+        {
+            var usuarioId = GetUsuarioId(user);
+            if (usuarioId is null) return Results.Unauthorized();
+
+            if (string.IsNullOrWhiteSpace(req.Nome) || req.Nome.Trim().Length < 2)
+                return Results.BadRequest(new { erro = "Informe um nome para o projeto." });
+
+            var projeto = await db.Projetos
+                .FirstOrDefaultAsync(p => p.Id == id && p.UsuarioId == usuarioId);
+
+            if (projeto is null)
+                return Results.NotFound(new { erro = "Projeto não encontrado." });
+
+            projeto.Nome = req.Nome.Trim();
+            projeto.Descricao = req.Descricao?.Trim();
+            projeto.Endereco = req.Endereco?.Trim();
+            projeto.Regiao = req.Regiao?.Trim();
+            projeto.TerrenoRegistrado = req.TerrenoRegistrado;
+            projeto.TipoArquitetura = req.TipoArquitetura?.Trim();
+            projeto.Orcamento = req.Orcamento;
+            projeto.AreaM2 = req.AreaM2;
+            projeto.DataInicio = req.DataInicio;
+            projeto.PrevisaoTermino = req.PrevisaoTermino;
+
+            await db.SaveChangesAsync();
+
+            var completo = await db.Projetos
+                .AsNoTracking()
+                .Include(p => p.Etapas)
+                .FirstAsync(p => p.Id == id);
+            return Results.Ok(ProjetoResponse.From(completo));
+        });
+
         group.MapDelete("/{id:guid}", async (Guid id, ClaimsPrincipal user, AppDbContext db) =>
         {
             var usuarioId = GetUsuarioId(user);

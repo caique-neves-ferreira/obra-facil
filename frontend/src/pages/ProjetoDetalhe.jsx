@@ -3,8 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
 import { api, auth } from '../api';
 
 const CORES = ['#f2600c', '#23508f', '#2e7d4f', '#c94e07', '#4a4d50', '#8a5a2b', '#1b6f8f', '#7a3fa0'];
@@ -125,103 +123,6 @@ export default function ProjetoDetalhe() {
   const totalCustos = custos.reduce((s, c) => s + (c.custoEstimado || 0), 0);
   const totalLegalizacao = legalizacao.reduce((s, l) => s + (l.custoEstimado || 0), 0);
 
-  function baixarPlanilha() {
-    const wb = XLSX.utils.book_new();
-
-    const abaCustos = XLSX.utils.json_to_sheet(
-      custos.map((c) => ({
-        Etapa: c.etapa,
-        'Percentual (%)': c.percentual,
-        'Custo estimado (R$)': c.custoEstimado,
-      }))
-    );
-    XLSX.utils.sheet_add_aoa(abaCustos, [['TOTAL', '', totalCustos]], { origin: -1 });
-    XLSX.utils.book_append_sheet(wb, abaCustos, 'Custos por etapa');
-
-    const abaLegal = XLSX.utils.json_to_sheet(
-      legalizacao.map((l) => ({
-        Ordem: l.ordem,
-        Etapa: l.titulo,
-        'Órgão': l.orgao,
-        'Descrição': l.descricao,
-        Documentos: (l.documentos || []).join('; '),
-        'Prazo estimado': l.prazoEstimado,
-        'Custo estimado (R$)': l.custoEstimado,
-      }))
-    );
-    XLSX.utils.book_append_sheet(wb, abaLegal, 'Legalização');
-
-    const ambientes = analise?.planta?.ambientes || [];
-    if (ambientes.length > 0) {
-      const abaPlanta = XLSX.utils.json_to_sheet(
-        ambientes.map((a) => ({
-          Ambiente: a.nome,
-          'Largura (m)': a.largura,
-          'Comprimento (m)': a.comprimento,
-          'Área (m²)': +(a.largura * a.comprimento).toFixed(2),
-        }))
-      );
-      XLSX.utils.book_append_sheet(wb, abaPlanta, 'Ambientes');
-    }
-
-    XLSX.writeFile(wb, `obra-facil-${(projeto?.nome || 'projeto').toLowerCase().replace(/\s+/g, '-')}.xlsx`);
-  }
-
-  function baixarDocumento() {
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const margem = 18;
-    const larguraUtil = 210 - margem * 2;
-    let y = 22;
-
-    const quebra = (altura = 6) => {
-      if (y + altura > 280) { doc.addPage(); y = 22; }
-    };
-    const texto = (str, tamanho = 10, estilo = 'normal', cor = [27, 29, 31]) => {
-      doc.setFont('helvetica', estilo);
-      doc.setFontSize(tamanho);
-      doc.setTextColor(...cor);
-      const linhas = doc.splitTextToSize(str, larguraUtil);
-      for (const linha of linhas) {
-        quebra();
-        doc.text(linha, margem, y);
-        y += tamanho * 0.5;
-      }
-    };
-
-    // Cabeçalho
-    doc.setFillColor(27, 29, 31);
-    doc.rect(0, 0, 210, 14, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('OBRA FÁCIL — ROTEIRO DE LEGALIZAÇÃO', margem, 9);
-
-    texto(projeto?.nome || 'Projeto', 16, 'bold');
-    y += 2;
-    texto(`Região: ${projeto?.regiao || '—'}  |  Terreno registrado: ${projeto?.terrenoRegistrado ? 'Sim' : 'Não'}  |  Gerado em: ${new Date(analise.geradoEm).toLocaleDateString('pt-BR')}`, 9, 'normal', [74, 77, 80]);
-    y += 3;
-    texto('Estimativas geradas por IA com base em práticas comuns. Prazos, taxas e exigências variam por município — confirme na prefeitura e no cartório de imóveis da sua região.', 8.5, 'italic', [120, 120, 120]);
-    y += 4;
-
-    for (const l of legalizacao) {
-      quebra(14);
-      doc.setDrawColor(242, 96, 12);
-      doc.setLineWidth(0.8);
-      doc.line(margem, y - 1, margem + 8, y - 1);
-      texto(`${l.ordem}. ${l.titulo}  (${l.orgao})`, 12, 'bold');
-      texto(l.descricao, 9.5);
-      if (l.documentos?.length) {
-        texto(`Documentos: ${l.documentos.join(' · ')}`, 8.5, 'normal', [74, 77, 80]);
-      }
-      texto(`Prazo estimado: ${l.prazoEstimado}   |   Custo estimado: ${fmtBRL(l.custoEstimado)}`, 9, 'bold');
-      y += 4;
-    }
-
-    quebra(10);
-    texto(`CUSTO TOTAL ESTIMADO DE LEGALIZAÇÃO: ${fmtBRL(totalLegalizacao)}`, 11, 'bold', [242, 96, 12]);
-
-    doc.save(`legalizacao-${(projeto?.nome || 'projeto').toLowerCase().replace(/\s+/g, '-')}.pdf`);
-  }
 
   if (!projeto && !erro) {
     return <main className="container"><p style={{ color: 'var(--ink-soft)' }}>Carregando…</p></main>;
@@ -262,17 +163,23 @@ export default function ProjetoDetalhe() {
 
       {analise && (
         <>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-            <button className="btn" onClick={baixarPlanilha}>⬇ Baixar planilha (.xlsx)</button>
-            <button className="btn secundario" onClick={baixarDocumento}>⬇ Documento de legalização (.pdf)</button>
+          <div className="card" style={{ marginTop: 24, padding: 14, display: 'flex', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '1.1rem' }}>📊</span>
+            <p style={{ fontSize: '0.9rem', flex: 1, minWidth: 220 }}>
+              Baixe a planilha de custos, o progresso da obra e o documento de legalização
+              na aba <Link to="/relatorios"><strong>Relatórios</strong></Link>.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 16 }}>
             {planoFree ? (
               <Link to="/planos" className="btn secundario" title="Regeneração disponível no plano Pro">
                 ↻ Regenerar (Pro)
               </Link>
             ) : (
-              <button className="btn secundario" onClick={gerar} disabled={gerando}>
-                {gerando ? 'Regenerando…' : '↻ Regenerar análise'}
-              </button>
+              <Link to={`/projetos/${id}/editar`} className="btn secundario">
+                ↻ Regenerar análise
+              </Link>
             )}
           </div>
 

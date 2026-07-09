@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import NovoProjeto from './pages/NovoProjeto';
+import EditarProjeto from './pages/EditarProjeto';
 import ProjetoDetalhe from './pages/ProjetoDetalhe';
 import Planos from './pages/Planos';
 import Conta from './pages/Conta';
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="/relatorios" element={<Protegida><Relatorios /></Protegida>} />
         <Route path="/projetos" element={<Protegida><Dashboard /></Protegida>} />
         <Route path="/projetos/novo" element={<Protegida><NovoProjeto /></Protegida>} />
+        <Route path="/projetos/:id/editar" element={<Protegida><EditarProjeto /></Protegida>} />
         <Route path="/projetos/:id" element={<Protegida><ProjetoDetalhe /></Protegida>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

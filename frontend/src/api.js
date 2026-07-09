@@ -36,6 +36,8 @@ export const api = {
   listarProjetos: () => request('/api/projetos'),
   criarProjeto: (projeto) =>
     request('/api/projetos', { method: 'POST', body: JSON.stringify(projeto) }),
+  atualizarProjeto: (id, projeto) =>
+    request(`/api/projetos/${id}`, { method: 'PUT', body: JSON.stringify(projeto) }),
   buscarProjeto: (id) => request(`/api/projetos/${id}`),
   buscarAnalise: (projetoId) => request(`/api/projetos/${projetoId}/analise`),
   gerarAnalise: (projetoId) =>
