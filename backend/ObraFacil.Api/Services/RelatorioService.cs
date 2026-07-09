@@ -47,7 +47,7 @@ public class RelatorioService
         foreach (var c in custos)
         {
             ws.Cell(linha, 1).Value = c.Etapa;
-            ws.Cell(linha, 2).Value = c.Percentual / 100.0;
+            ws.Cell(linha, 2).Value = (double)(c.Percentual / 100m);
             ws.Cell(linha, 2).Style.NumberFormat.Format = "0.0%";
             ws.Cell(linha, 3).Value = c.CustoEstimado;
             ws.Cell(linha, 3).Style.NumberFormat.Format = "#,##0.00";
@@ -120,7 +120,7 @@ public class RelatorioService
 
             ws.Cell(linha, 1).Value = e.Nome;
             ws.Cell(linha, 2).Value = e.Concluida ? "Sim" : "Não";
-            ws.Cell(linha, 3).Value = valor ?? 0;
+            ws.Cell(linha, 3).Value = valor ?? 0m;
             ws.Cell(linha, 3).Style.NumberFormat.Format = "#,##0.00";
             ws.Cell(linha, 4).Value = origem;
 
