@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useNavigate, useLocation } from 'react-router-dom';
 import { auth } from './api';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -14,6 +14,7 @@ import Relatorios from './pages/Relatorios';
 
 function Topbar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const logado = auth.logado();
   const usuario = auth.usuario();
   const [menuAberto, setMenuAberto] = useState(false);
@@ -34,6 +35,9 @@ function Topbar() {
   }
 
   const inicial = (usuario?.nome || '?').trim().charAt(0).toUpperCase();
+
+  // A landing (/) tem sua própria navbar; não renderiza o topbar do app.
+  if (location.pathname === '/') return null;
 
   return (
     <>
