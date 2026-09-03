@@ -1,8 +1,28 @@
 # Obra Fácil
 
-Construction-management platform: register projects, track phases, budget and deadlines — with an AI-assisted analysis of permitting requirements, cost estimates and floor plan.
+Construction-management platform for the Brazilian market. Register a project and get, in minutes, an AI-generated permitting roadmap, a cost estimate broken down by phase, and a schematic floor plan — work that normally takes weeks of research and loose spreadsheets.
 
-**[Live demo](https://obra-facil-eta.vercel.app)** · **[API docs (Swagger)](https://obra-facil-eta.vercel.app)**
+**[Live demo](https://obra-facil-eta.vercel.app)**
+
+> The product UI is in Brazilian Portuguese, since permitting rules are region-specific.
+
+<p align="center">
+  <img src="docs/screenshots/landing.png" alt="Obra Fácil landing page" width="420"/>
+</p>
+
+## What it does
+
+Three automated steps replace the manual research a homeowner or small builder usually goes through:
+
+| Step | Output |
+|---|---|
+| **Permitting roadmap** | Step-by-step approval path for the city hall and the property registry office, specific to the user's region — with required documents, deadlines and estimated fees per step |
+| **Cost estimate by phase** | Predicted cost of each macro-phase (foundation, masonry, roofing, finishing…) for the project's region, exportable to a spreadsheet |
+| **Schematic floor plan** | Preliminary room distribution generated for the lot's dimensions |
+
+<p align="center">
+  <img src="docs/screenshots/analysis.png" alt="Generated analysis: phase tracking, cost breakdown and permitting roadmap" width="420"/>
+</p>
 
 ## Stack
 
@@ -17,8 +37,9 @@ Construction-management platform: register projects, track phases, budget and de
 ## Project structure
 
 ```
-backend/ObraFacil.Api/   .NET 8 API (auth + projects + phases)
+backend/ObraFacil.Api/   .NET 8 API (auth + projects + phases + analysis)
 frontend/                React SPA
+docs/screenshots/        Images used in this README
 ```
 
 ## Data model
@@ -41,7 +62,7 @@ Foreign keys use `ON DELETE CASCADE`. Unique index on `users.email`; indexes on 
 | GET | `/api/projetos` | JWT | Lists the user's projects |
 | GET | `/api/projetos/{id}` | JWT | Project detail |
 | POST | `/api/projetos` | JWT | Creates a project (Free plan: max. 2) |
-| POST | `/api/projetos/{id}/analise` | JWT | Generates an AI analysis (permitting, costs, floor plan) |
+| POST | `/api/projetos/{id}/analise` | JWT | Generates the AI analysis (permitting, costs, floor plan) |
 | GET | `/api/projetos/{id}/analise` | JWT | Returns the stored analysis |
 | GET | `/health` | — | Health check |
 
